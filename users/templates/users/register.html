@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Kayıt Ol{% endblock %}
+
+{% block nav %}
+<a href="/login/" class="nav-link">Giriş Yap</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="auth-shell">
+
+    <!-- SOL PANEL -->
+    <section class="auth-left">
+        <div>
+            <div class="auth-badge">AI Destekli Araştırma Asistanı</div>
+
+            <div class="auth-brand">
+                <h1>Yeni nesil araştırma deneyimine katılın.</h1>
+                <p>
+                    ProjeAdii, araştırma süreçlerini yalnızca saklamaz; analiz eder,
+                    bağlar ve anlamlı bilgi yapılarına dönüştürür. Hemen kayıt olun
+                    ve kişisel araştırma alanınızı oluşturmaya başlayın.
+                </p>
+            </div>
+
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h3>Kişisel Bilgi Alanı</h3>
+                    <p>Araştırmalarınızı ve kaynaklarınızı tek bir yapı altında yönetin.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Yapay Zekâ Desteği</h3>
+                    <p>Bilgi keşfi ve analiz süreçlerinde akıllı yönlendirme alın.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Daha Derin Analiz</h3>
+                    <p>Bilgiler arasındaki ilişkileri keşfediin.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-footer-note">
+            Daha güçlü bir araştırma altyapısı için hesabınızı oluşturun.
+        </div>
+    </section>
+
+    <!-- SAĞ PANEL -->
+    <section class="auth-right">
+        <div class="form-box">
+
+            <div class="logo">Yeni Hesap</div>
+
+            <h1 class="title">Kayıt Ol</h1>
+            <p class="sub">Platforma katılarak araştırma alanınızı oluşturun.</p>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <label for="fullname">Ad Soyad</label>
+                <input id="fullname" type="text" name="fullname" placeholder="Ad ve soyadınızı girin" required>
+
+                <label for="username">Kullanıcı Adı</label>
+                <input id="username" type="text" name="username" placeholder="Kullanıcı adınızı girin" required>
+
+                <label for="email">Email</label>
+                <input id="email" type="email" name="email" placeholder="Email adresinizi girin" required>
+
+                <label for="password">Şifre</label>
+                <div class="password-wrapper">
+                    <input id="password" type="password" name="password" placeholder="Şifrenizi girin" required>
+                    <button class="show-btn" type="button" onclick="togglePassword('password', this)">Göster</button>
+                </div>
+
+                <label for="confirm_password">Şifre Tekrar</label>
+                <div class="password-wrapper">
+                    <input id="confirm_password" type="password" name="confirm_password" placeholder="Şifrenizi tekrar girin" required>
+                    <button class="show-btn" type="button" onclick="togglePassword('confirm_password', this)">Göster</button>
+                </div>
+
+                <button class="btn" type="submit">Kayıt Ol</button>
+            </form>
+
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+
+            <div class="row">
+                Zaten hesabın var mı? <a href="/login/">Giriş yap</a>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+
+<script>
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+
+    if (input.type === "password") {
+        input.type = "text";
+        button.textContent = "Gizle";
+    } else {
+        input.type = "password";
+        button.textContent = "Göster";
+    }
+}
+</script>
+
+{% endblock %}

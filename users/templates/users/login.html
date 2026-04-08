@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Giriş Yap{% endblock %}
+
+{% block nav %}
+<a href="/register/" class="nav-link">Kayıt Ol</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="auth-shell">
+
+    
+    <section class="auth-left">
+        <div>
+            <div class="auth-badge">AI Destekli Araştırma Asistanı</div>
+
+            <div class="auth-brand">
+                <h1>Bilgiyi bağla, araştırmayı hızlandır.</h1>
+                <p>
+                   ProjeAdi; bilişsel bilgi grafiği yapısıyla kaynakları, kavramları ve ilişkileri
+                    anlamlandıran akıllı bir araştırma asistanıdır. Daha hızlı keşif, daha güçlü analiz
+                    ve daha düzenli bilgi yönetimi sunar.
+                </p>
+            </div>
+
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h3>Akıllı Bilgi Haritalama</h3>
+                    <p>Kaynaklar arasındaki ilişkileri görselleştirerek daha anlamlı araştırma akışları oluşturur.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Hızlı İçgörü Üretimi</h3>
+                    <p>Dağınık verileri toparlayarak araştırma süreçlerini daha verimli hale getirir.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Tek Yerde Bilgi</h3>
+                    <p>Notlar ve kavramlar arasında bağlantı kurarak sürdürülebilir bir bilgi düzeni sağlar.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-footer-note">
+            AI destekli bilişsel bilgi grafiği platformuna hoş geldiniz.
+        </div>
+    </section>
+
+    <!-- SAĞ PANEL -->
+    <section class="auth-right">
+        <div class="form-box">
+
+            <div class="logo">Hoş Geldiniz</div>
+
+            <h1 class="title">Giriş Yap</h1>
+            <p class="sub">Hesabınıza giriş yaparak araştırmaya devam edin.</p>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <label for="username">Kullanıcı Adı</label>
+                <input id="username" type="text" name="username" placeholder="Kullanıcı adınızı girin" required>
+
+                <label for="password">Şifre</label>
+                <div class="password-wrapper">
+                    <input id="password" type="password" name="password" placeholder="Şifrenizi girin" required>
+                    <button class="show-btn" type="button" onclick="togglePassword('password', this)">Göster</button>
+                </div>
+
+                <button class="btn" type="submit">Giriş Yap</button>
+            </form>
+
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+
+            <div class="row">
+                Hesabın yok mu? <a href="/register/">Kayıt ol</a>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+
+<script>
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+
+    if (input.type === "password") {
+        input.type = "text";
+        button.textContent = "Gizle";
+    } else {
+        input.type = "password";
+        button.textContent = "Göster";
+    }
+}
+</script>
+
+{% endblock %}
