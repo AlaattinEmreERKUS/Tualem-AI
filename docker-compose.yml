@@ -1,0 +1,177 @@
+version: "3.9"
+
+services:
+  # ─── Databases ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexus-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: nexus
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - nexus-network
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: nexus-neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH}
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    networks:
+      - nexus-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: nexus-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - nexus-network
+
+  # ─── Services ────────────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: nexus-user-service
+    env_file: ./services/user-service/.env
+    depends_on:
+      - postgres
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/user-service:/app
+    ports:
+      - "8001:8000"
+
+  document-service:
+    build:
+      context: ./services/document-service
+      dockerfile: Dockerfile
+    container_name: nexus-document-service
+    env_file: ./services/document-service/.env
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/document-service:/app
+      - document_uploads:/app/media
+    ports:
+      - "8002:8000"
+
+  processing-service:
+    build:
+      context: ./services/processing-service
+      dockerfile: Dockerfile
+    container_name: nexus-processing-service
+    env_file: ./services/processing-service/.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - neo4j
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/processing-service:/app
+      - document_uploads:/app/media
+    ports:
+      - "8003:8000"
+
+  processing-worker:
+    build:
+      context: ./services/processing-service
+      dockerfile: Dockerfile
+    container_name: nexus-celery-worker
+    command: celery -A config worker --loglevel=info
+    env_file: ./services/processing-service/.env
+    depends_on:
+      - rabbitmq
+      - neo4j
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/processing-service:/app
+      - document_uploads:/app/media
+
+  graph-service:
+    build:
+      context: ./services/graph-service
+      dockerfile: Dockerfile
+    container_name: nexus-graph-service
+    env_file: ./services/graph-service/.env
+    depends_on:
+      - neo4j
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/graph-service:/app
+    ports:
+      - "8004:8000"
+
+  chat-service:
+    build:
+      context: ./services/chat-service
+      dockerfile: Dockerfile
+    container_name: nexus-chat-service
+    env_file: ./services/chat-service/.env
+    depends_on:
+      - neo4j
+      - postgres
+    networks:
+      - nexus-network
+    volumes:
+      - ./services/chat-service:/app
+    ports:
+      - "8005:8000"
+
+  # ─── Gateway ─────────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: nexus-gateway
+    depends_on:
+      - user-service
+      - document-service
+      - processing-service
+      - graph-service
+      - chat-service
+    networks:
+      - nexus-network
+    ports:
+      - "80:80"
+
+  # ─── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nexus-frontend
+    networks:
+      - nexus-network
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  document_uploads:
+
+networks:
+  nexus-network:
+    driver: bridge
