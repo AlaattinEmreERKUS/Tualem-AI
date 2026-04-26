@@ -61,16 +61,16 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.conversations.authentication.RemoteJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
-NEO4J_URI = config("NEO4J_URI", default="bolt://neo4j:7687")
-NEO4J_USERNAME = config("NEO4J_USERNAME", default="neo4j")
-NEO4J_PASSWORD = config("NEO4J_PASSWORD")
+SIMPLE_JWT = {
+    "SIGNING_KEY": config("JWT_SECRET_KEY"),
+}
 
 GEMINI_API_KEY = config("GEMINI_API_KEY")
 GRAPH_SERVICE_URL = config("GRAPH_SERVICE_URL", default="http://graph-service:8000")

@@ -61,11 +61,15 @@ NEO4J_PASSWORD = config("NEO4J_PASSWORD")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.graph.authentication.RemoteJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+}
+
+SIMPLE_JWT = {
+    "SIGNING_KEY": config("JWT_SECRET_KEY"),
 }
 
 LANGUAGE_CODE = "en-us"
