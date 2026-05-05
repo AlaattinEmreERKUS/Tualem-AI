@@ -11,10 +11,10 @@ class Document(models.Model):
 
 class ContentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document = models.ForeignKey(Document,on_delete=models.CASCADE, related_name='chunks')
+    document_id = models.ForeignKey(Document,on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document = models.ForeignKey(Document, on_delete=models.CASCADE)
+    document_id = models.ForeignKey(Document, on_delete=models.CASCADE)
     current_step = models.CharField(max_length=50, choices=[('Metin Çıkarma', 'Parçalama', 'Entity Çıkarma', "Neo4j'e yazma")])
