@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: linear-gradient(135deg, #E7EFC7, #AEC8A4);
+  --panel-bg: linear-gradient(160deg, #3B3B1A, #8A784E);
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --surface: rgba(255, 255, 255, 0.72);
+  --text: #3B3B1A;
+  --muted: #6f623f;
+  --light-text: #ffffff;
+  --light-muted: rgba(255, 255, 255, 0.78);
+  --input-bg: #ffffff;
+  --input-border: #AEC8A4;
+  --input-focus: #8A784E;
+  --button-bg: #3B3B1A;
+  --button-hover: #2a2a12;
+  --button-text: #ffffff;
+  --link: #3B3B1A;
+  --shadow: 0 20px 45px rgba(0, 0, 0, 0.10);
+  --error-bg: #ffe5e5;
+  --error-text: #b91c1c;
+  --feature-bg: rgba(255, 255, 255, 0.12);
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+* { box-sizing: border-box; }
