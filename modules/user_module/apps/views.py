@@ -25,6 +25,8 @@ def register_view(request):
             messages.error(request, "Bu email zaten kullanımda.")
             return render(request, "users/register.html")
         
+        # Sisteme yanlış bir kayıt gerçekleştdiğinde sayfa yeniden render'landığı için tekrar her şeyin doldurulması gerekiyor. Render sisteminin düzeltilmesi gerekiyor.
+        
         try:
             validate_password(password)
 
