@@ -17,4 +17,9 @@ class ContentChunk(models.Model):
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     document_id = models.ForeignKey(Document, on_delete=models.CASCADE)
-    current_step = models.CharField(max_length=50, choices=[('Metin Çıkarma', 'Parçalama', 'Entity Çıkarma', "Neo4j'e yazma")])
+    current_step = models.CharField(max_length=50, choices=[
+        ('metin_cikarma', 'Metin Çıkarma'),
+        ('parcalama', 'Parçalama'),
+        ('entity_cikarma', 'Entity Çıkarma'),
+        ('neo4j_yazma', "Neo4j'e Yazma"),
+    ])
