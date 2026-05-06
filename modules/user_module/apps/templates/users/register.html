@@ -81,15 +81,18 @@
                 </div>
 
                 <button class="btn" type="submit">Kayıt Ol</button>
+
             </form>
 
-            {% if error %}
-            <div class="error">{{ error }}</div>
-            {% endif %}
-
-            <div class="row">
-                Zaten hesabın var mı? <a href="/login/">Giriş yap</a>
+            {% if messages %}
+            <div class="messages">
+               {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
+                  {{ message }}
+                 </div>
+                {% endfor %}
             </div>
+            {% endif %}
 
         </div>
     </section>
