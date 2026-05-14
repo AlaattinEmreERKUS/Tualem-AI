@@ -1,4 +1,4 @@
-from modules.graph_module.apps.models import Document, ContentChunk, GraphTask
+from apps.models import Document, ContentChunk, GraphTask
 from typing import List, Optional
 import uuid
 
