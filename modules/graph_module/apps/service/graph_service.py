@@ -1,64 +1,78 @@
 from apps.repositories.graph_repository import GraphRepository
+from apps.exceptions.graph_exceptions import (
+    DocumentNotFoundException,
+    DocumentSaveException,
+    DocumentDeleteException,
+    DocumentAccessDeniedException,
+    TaskCreationException,
+    TaskNotFoundException,
+    ChunkNotFoundException,
+)
 
-class GraphService():
 
-    @staticmethod
-    def get_document_list():
-        try:
-            return GraphRepository.get_document_list()
-        except Exception:
-            raise
-        
-    @staticmethod
-    def get_document_by_id(document_id):
-        try:
-            return GraphRepository.get_document_by_id(document_id)
-        except Exception:
-            raise
-        
-    @staticmethod
-    def create_document(file_name, file_type, file):
-        try:
-            return GraphRepository.create_document(
-                file_name,
-                file_type,
-                file
-            )
-        except Exception:
-            raise
+class GraphService:
+
+    # --- Document işlemleri ---
 
     @staticmethod
-    def update_document(document_id, file_name, file_type, file):
-        try:
-            return GraphRepository.update_document(
-                document_id,
-                file_name,
-                file_type,
-                file
-            )
-        except Exception:
-            raise
+    def get_documents(user_id):
+        documents = GraphRepository.get_document_list(user_id)
+        if documents is None:
+            raise DocumentNotFoundException()
+        return documents
 
     @staticmethod
-    def delete_document(document_id):
-        try:
-            return GraphRepository.delete_document(document_id)
-        except Exception:
-            raise
+    def get_document(document_id, user_id):
+        document = GraphRepository.get_document_by_id(document_id, user_id)
+        if not document:
+            raise DocumentNotFoundException(document_id)
+        return document
 
     @staticmethod
-    def get_contentchunk_list(document_id):
-        try:
-            return GraphRepository.get_contentchunk_list(document_id)
-        except Exception:
-            raise
+    def upload_document(user_id, file_name, file_type, file):
+        document = GraphRepository.create_document(user_id, file_name, file_type, file)
+        if not document:
+            raise DocumentSaveException()
+
+        task = GraphRepository.create_task(document.id)
+        if not task:
+            GraphRepository.update_document_status(document.id, 'failed')
+            raise TaskCreationException()
+
+        # Celery task burada tetiklenecek (adım 6'da bağlanacak)
+        # from apps.tasks import run_graph_pipeline
+        # run_graph_pipeline.delay(str(document.id), str(task.id))
+
+        return {"document_id": str(document.id), "task_id": str(task.id)}
 
     @staticmethod
-    def get_contentchunk_by_id(document_id, contentchunk_id):
-        try:
-            return GraphRepository.get_contentchunk_by_id(
-                document_id,
-                contentchunk_id
-            )
-        except Exception:
-            raise
+    def delete_document(document_id, user_id):
+        document = GraphRepository.get_document_by_id(document_id, user_id)
+        if not document:
+            raise DocumentAccessDeniedException()
+
+        deleted = GraphRepository.delete_document(document_id, user_id)
+        if not deleted:
+            raise DocumentDeleteException()
+
+    # --- Task / pipeline durum sorgulama ---
+
+    @staticmethod
+    def get_task_status(document_id):
+        task = GraphRepository.get_task_by_document(document_id)
+        if not task:
+            raise TaskNotFoundException()
+        return task
+
+    # --- Chunk işlemleri ---
+
+    @staticmethod
+    def get_chunks(document_id, user_id):
+        document = GraphRepository.get_document_by_id(document_id, user_id)
+        if not document:
+            raise DocumentNotFoundException(document_id)
+
+        chunks = GraphRepository.get_chunks_by_document(document_id)
+        if chunks is None:
+            raise ChunkNotFoundException()
+        return chunks
