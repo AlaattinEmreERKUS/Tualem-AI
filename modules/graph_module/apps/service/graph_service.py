@@ -39,10 +39,6 @@ class GraphService:
             GraphRepository.update_document_status(document.id, 'failed')
             raise TaskCreationException()
 
-        # Celery task burada tetiklenecek (adım 6'da bağlanacak)
-        # from apps.tasks import run_graph_pipeline
-        # run_graph_pipeline.delay(str(document.id), str(task.id))
-
         return {"document_id": str(document.id), "task_id": str(task.id)}
 
     @staticmethod
