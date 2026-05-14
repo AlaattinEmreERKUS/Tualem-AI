@@ -3,23 +3,47 @@ from django.db import models
 
 class Document(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField()
     file_name = models.CharField(max_length=300)
     file_type = models.CharField(max_length=300)
-    file = models.FileField()
-    uploaded_at = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('processing', 'Processing'), ('completed', 'Completed')])
+    file = models.FileField(upload_to='documents/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='pending'
+    )
 
 class ContentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document_id = models.ForeignKey(Document,on_delete=models.CASCADE, related_name='chunks')
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
+    chunk_index = models.IntegerField()
+    embedding = models.TextField(null=True, blank=True)
+    is_embedded = models.BooleanField(default=False)
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document_id = models.ForeignKey(Document, on_delete=models.CASCADE)
-    current_step = models.CharField(max_length=50, choices=[
-        ('metin_cikarma', 'Metin Çıkarma'),
-        ('parcalama', 'Parçalama'),
-        ('entity_cikarma', 'Entity Çıkarma'),
-        ('neo4j_yazma', "Neo4j'e Yazma"),
-    ])
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='tasks')
+    current_step = models.CharField(
+        max_length=50,
+        choices=[
+            ('text_extraction', 'Metin Çıkarma'),
+            ('chunking', 'Parçalama'),
+            ('entity_extraction', 'Entity Çıkarma'),
+            ('neo4j_write', "Neo4j'e Yazma"),
+            ('vector_write', 'Vektöre Yazma'),
+            ('completed', 'Tamamlandı'),
+            ('failed', 'Başarısız'),
+        ],
+        default='text_extraction'
+    )
+    error_message = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
