@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from pgvector.django import VectorField
 
 class Document(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -25,7 +26,7 @@ class ContentChunk(models.Model):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
     chunk_index = models.IntegerField()
-    embedding = models.TextField(null=True, blank=True)
+    embedding = VectorField(dimensions=384, null=True, blank=True)
     is_embedded = models.BooleanField(default=False)
 
 class GraphTask(models.Model):
