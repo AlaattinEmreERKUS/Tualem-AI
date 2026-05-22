@@ -83,6 +83,7 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
+      - media_data:/app/media
 
   celery_worker:
     build:
@@ -106,7 +107,9 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
+      - media_data:/app/media
 
 volumes:
   postgres_data:
   neo4j_data:
+  media_data:
