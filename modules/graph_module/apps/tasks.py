@@ -46,14 +46,12 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
     neo4j = _get_neo4j_client()
 
     try:
-        # Adım 1 — Metin çıkarma (kalıcı hata, retry yok)
         GraphRepository.update_task_step(task_id, "text_extraction")
         try:
             text = _extract_text(document.file.path, document.file_type)
         except Exception as e:
             raise PipelineException("text_extraction", str(e)) from e
 
-        # Adım 2 — Parçalama (kalıcı hata, retry yok)
         GraphRepository.update_task_step(task_id, "chunking")
         chunks = neo4j.chunk_text(text)
         if not chunks:
@@ -62,26 +60,21 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
         if not chunk_ids:
             raise PipelineException("chunking", "Chunk'lar kaydedilemedi.")
 
-        # Adım 3 — Entity çıkarma (geçici hata, chunk atlanır)
         GraphRepository.update_task_step(task_id, "entity_extraction")
-        all_entities = []
-        all_relationships = []
-        for chunk_text in chunks:
+        for chunk_id, chunk_text in zip(chunk_ids, chunks):
             try:
                 graph_data = neo4j.extract_graph_data(chunk_text)
-                all_entities.extend(graph_data.get("entities", []))
-                all_relationships.extend(graph_data.get("relationships", []))
+                neo4j.create_chunk_with_entities(
+                    chunk_id=chunk_id,
+                    entities=graph_data.get("entities", []),
+                    relationships=graph_data.get("relationships", []),
+                )
             except EntityExtractionException:
+                neo4j.create_chunk_node(chunk_id)
                 continue
 
-        # Adım 4 — Neo4j yazma (geçici hata, retry alır)
         GraphRepository.update_task_step(task_id, "neo4j_write")
-        if all_entities:
-            neo4j.create_nodes(all_entities)
-        if all_relationships:
-            neo4j.create_relationships(all_relationships)
 
-        # Adım 5 — Vektör yazma (geçici hata, retry alır)
         GraphRepository.update_task_step(task_id, "vector_write")
         from apps.vector_store import VectorStore
         vs = VectorStore()

@@ -3,16 +3,21 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from apps.service.graph_service import GraphService
+from apps.service.graph_rag_service import GraphRAGService
 from apps.serializers.graph_serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
     ContentChunkSerializer,
     GraphTaskSerializer,
+    QueryRequestSerializer,
+    QueryResponseSerializer,
 )
 from apps.exceptions.graph_exceptions import (
     GraphBaseException,
     DocumentNotFoundException,
     DocumentAccessDeniedException,
+    NoRelevantChunksException,
+    RAGQueryException,
 )
 from apps.utils.jwt_utils import verify_token, AuthenticationException
 
@@ -117,5 +122,33 @@ class DocumentChunkListView(APIView):
             return Response(ContentChunkSerializer(chunks, many=True).data)
         except DocumentNotFoundException as e:
             return Response({"error": e.message}, status=status.HTTP_404_NOT_FOUND)
+        except GraphBaseException as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class QueryView(APIView):
+
+    def post(self, request):
+        user_id, err = get_user_id(request)
+        if err:
+            return Response({"error": err.message}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = QueryRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        try:
+            result = GraphRAGService.query(
+                user_id=str(user_id),
+                question=data["question"],
+                top_k=data["top_k"],
+                provider=data.get("provider", ""),
+            )
+            return Response(QueryResponseSerializer(result).data)
+        except NoRelevantChunksException as e:
+            return Response({"error": e.message}, status=status.HTTP_404_NOT_FOUND)
+        except RAGQueryException as e:
+            return Response({"error": e.message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except GraphBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
