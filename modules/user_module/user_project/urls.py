@@ -1,15 +1,24 @@
 from django.contrib import admin
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-import apps.views
+from apps.views import (
+    login_view,
+    register_view,
+    dashboard_view,
+    logout_view,
+    RegisterView,
+    LoginView,
+    RefreshTokenView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("login/", apps.views.login_view, name="login"),
-    path("register/", apps.views.register_view, name="register"),
-    path("dashboard/", apps.views.dashboard_view, name="dashboard"),
-    path("logout/", apps.views.logout_view, name="logout"),
-    path("api/token/", TokenObtainPairView.as_view(), name="token-obtain"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
-    path("api/token/verify/", TokenVerifyView.as_view(), name="token-verify"),
+
+    path('login/', login_view, name='login'),
+    path('register/', register_view, name='register'),
+    path('dashboard/', dashboard_view, name='dashboard'),
+    path('logout/', logout_view, name='logout'),
+
+    path('api/auth/register/', RegisterView.as_view()),
+    path('api/auth/login/', LoginView.as_view()),
+    path('api/auth/refresh/', RefreshTokenView.as_view()),
 ]

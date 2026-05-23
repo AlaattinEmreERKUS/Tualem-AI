@@ -1,0 +1,44 @@
+from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from apps.models import CustomUser
+
+
+class RegisterSerializer(serializers.Serializer):
+    fullname = serializers.CharField(max_length=255)
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data["password"] != data["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Şifreler eşleşmiyor."})
+
+        if CustomUser.objects.filter(username=data["username"]).exists():
+            raise serializers.ValidationError({"username": "Bu kullanıcı adı zaten kullanımda."})
+
+        if CustomUser.objects.filter(email=data["email"]).exists():
+            raise serializers.ValidationError({"email": "Bu e-posta adresi zaten kullanımda."})
+
+        try:
+            validate_password(data["password"])
+        except ValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+
+        return data
+
+
+class LoginSerializer(serializers.Serializer):
+    identifier = serializers.CharField(help_text="Kullanıcı adı veya e-posta")
+    password = serializers.CharField(write_only=True)
+
+
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField()
+
+
+class UserResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "email", "fullname"]

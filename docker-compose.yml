@@ -44,8 +44,8 @@ services:
 
   user_module:
     build:
-      context: ./modules/user_module
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: modules/user_module/Dockerfile
     container_name: tualem_user_module
     env_file:
       - .env
@@ -59,11 +59,12 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/user_module:/app
+      - ./shared:/app/shared
 
   graph_module:
     build:
-      context: ./modules/graph_module
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: modules/graph_module/Dockerfile
     container_name: tualem_graph_module
     env_file:
       - .env
@@ -83,12 +84,13 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
+      - ./shared:/app/shared
       - media_data:/app/media
 
   celery_worker:
     build:
-      context: ./modules/graph_module
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: modules/graph_module/Dockerfile
     container_name: tualem_celery_worker
     command: celery -A core worker --loglevel=info --concurrency=2
     env_file:
@@ -107,6 +109,7 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
+      - ./shared:/app/shared
       - media_data:/app/media
 
 volumes:
