@@ -62,6 +62,7 @@ class Neo4jWriteException(GraphBaseException):
 
 class PipelineException(GraphBaseException):
     def __init__(self, step: str, detail: str = ""):
+        self.step = step
         msg = f"Pipeline hatası [{step}]: {detail}" if detail else f"Pipeline hatası [{step}]."
         super().__init__(msg)
 

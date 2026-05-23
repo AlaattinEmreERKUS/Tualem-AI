@@ -12,8 +12,6 @@ from apps.exceptions.graph_exceptions import (
 
 class GraphService:
 
-    # --- Document işlemleri ---
-
     @staticmethod
     def get_documents(user_id):
         documents = GraphRepository.get_document_list(user_id)
@@ -39,9 +37,8 @@ class GraphService:
             GraphRepository.update_document_status(document.id, 'failed')
             raise TaskCreationException()
 
-        # Celery task burada tetiklenecek (adım 6'da bağlanacak)
-        # from apps.tasks import run_graph_pipeline
-        # run_graph_pipeline.delay(str(document.id), str(task.id))
+        from apps.tasks import run_graph_pipeline
+        run_graph_pipeline.delay(str(document.id), str(task.id))
 
         return {"document_id": str(document.id), "task_id": str(task.id)}
 
@@ -55,16 +52,12 @@ class GraphService:
         if not deleted:
             raise DocumentDeleteException()
 
-    # --- Task / pipeline durum sorgulama ---
-
     @staticmethod
     def get_task_status(document_id):
         task = GraphRepository.get_task_by_document(document_id)
         if not task:
             raise TaskNotFoundException()
         return task
-
-    # --- Chunk işlemleri ---
 
     @staticmethod
     def get_chunks(document_id, user_id):
