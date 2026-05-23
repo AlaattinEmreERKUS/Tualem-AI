@@ -13,7 +13,33 @@ from apps.exceptions.graph_exceptions import (
 
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-EXTRACTION_MODEL = os.getenv("EXTRACTION_MODEL", "openai/gpt-4o-mini")
+
+
+def _build_llm(provider: str = ""):
+    resolved = (provider or os.getenv("LLM_PROVIDER", "")).lower()
+
+    if resolved == "groq" or (not resolved and os.getenv("GROQ_API_KEY")):
+        from langchain_groq import ChatGroq
+        return ChatGroq(
+            model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+            api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0,
+        )
+
+    if resolved == "ollama" or (not resolved and os.getenv("OLLAMA_BASE_URL")):
+        from langchain_ollama import ChatOllama
+        return ChatOllama(
+            model=os.getenv("OLLAMA_MODEL", "llama3.2"),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            temperature=0,
+        )
+
+    return ChatOpenAI(
+        model=os.getenv("EXTRACTION_MODEL", "openai/gpt-4o-mini"),
+        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+        openai_api_base=OPENROUTER_BASE_URL,
+        temperature=0,
+    )
 
 EXTRACTION_PROMPT = PromptTemplate(
     input_variables=["text"],
@@ -67,12 +93,7 @@ class Neo4jClient:
             chunk_size=2000,
             chunk_overlap=400,
         )
-        self.llm = ChatOpenAI(
-            model=EXTRACTION_MODEL,
-            openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-            openai_api_base=OPENROUTER_BASE_URL,
-            temperature=0,
-        )
+        self.llm = _build_llm()
 
     def close(self):
         self.driver.close()
@@ -119,6 +140,74 @@ class Neo4jClient:
                     session.run(query, params)
                 except Exception as e:
                     raise Neo4jWriteException(f"Node oluşturma hatası ({name}): {e}") from e
+
+    def create_chunk_node(self, chunk_id: str) -> None:
+        try:
+            with self.driver.session() as session:
+                session.run("MERGE (c:Chunk {id: $id})", {"id": chunk_id})
+        except Exception:
+            pass
+
+    def create_chunk_with_entities(self, chunk_id: str, entities: List[Dict], relationships: List[Dict]) -> None:
+        with self.driver.session() as session:
+            session.run("MERGE (c:Chunk {id: $id})", {"id": chunk_id})
+
+            for entity in entities:
+                name = entity.get("name", "")
+                entity_type = entity.get("type", "Entity")
+                props = {k.replace(" ", "_"): v for k, v in entity.get("properties", {}).items()}
+                props_str = ", ".join([f"{k}: ${k}" for k in props.keys()])
+                set_clause = f"SET e += {{{props_str}}}" if props_str else ""
+                params = {"name": name, "chunk_id": chunk_id, **props}
+                try:
+                    session.run(
+                        f"""
+                        MERGE (e:{entity_type} {{name: $name}})
+                        {set_clause}
+                        WITH e
+                        MATCH (c:Chunk {{id: $chunk_id}})
+                        MERGE (c)-[:CONTAINS]->(e)
+                        """,
+                        params,
+                    )
+                except Exception as e:
+                    raise Neo4jWriteException(f"Entity yazma hatası ({name}): {e}") from e
+
+            for rel in relationships:
+                source = rel.get("source", "")
+                target = rel.get("target", "")
+                rel_type = rel.get("type", "RELATED_TO").replace(" ", "_").upper()
+                props = {k.replace(" ", "_"): v for k, v in rel.get("properties", {}).items()}
+                props_str = ", ".join([f"`{k}`: ${k}" for k in props.keys()])
+                props_clause = f"SET r += {{{props_str}}}" if props_str else ""
+                params = {"source": source, "target": target, **props}
+                try:
+                    session.run(
+                        f"""
+                        MATCH (a {{name: $source}})
+                        MATCH (b {{name: $target}})
+                        MERGE (a)-[r:{rel_type}]->(b)
+                        {props_clause}
+                        """,
+                        params,
+                    )
+                except Exception as e:
+                    raise Neo4jWriteException(f"İlişki yazma hatası ({source}->{target}): {e}") from e
+
+    def get_graph_context_by_chunks(self, chunk_ids: List[str]) -> List[Dict[str, Any]]:
+        query = """
+        MATCH (c:Chunk)-[:CONTAINS]->(e)
+        WHERE c.id IN $chunk_ids
+        OPTIONAL MATCH (e)-[r]-(neighbor)
+        RETURN e.name AS entity, labels(e)[0] AS entity_type, type(r) AS rel_type, neighbor.name AS neighbor
+        LIMIT 150
+        """
+        try:
+            with self.driver.session() as session:
+                result = session.run(query, {"chunk_ids": chunk_ids})
+                return [dict(record) for record in result]
+        except Exception:
+            return []
 
     def create_relationships(self, relationships: List[Dict[str, Any]]):
         with self.driver.session() as session:

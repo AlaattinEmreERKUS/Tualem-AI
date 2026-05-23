@@ -69,3 +69,15 @@ class PipelineException(GraphBaseException):
 class EntityExtractionException(GraphBaseException):
     def __init__(self):
         super().__init__("LLM'den entity çıkarma başarısız oldu.")
+
+
+# --- RAG ---
+
+class NoRelevantChunksException(GraphBaseException):
+    def __init__(self):
+        super().__init__("Soruyla ilgili içerik bulunamadı.")
+
+class RAGQueryException(GraphBaseException):
+    def __init__(self, detail: str = ""):
+        msg = f"RAG sorgusu başarısız: {detail}" if detail else "RAG sorgusu başarısız."
+        super().__init__(msg)

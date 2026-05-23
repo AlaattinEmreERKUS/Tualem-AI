@@ -34,3 +34,24 @@ class GraphTaskSerializer(serializers.ModelSerializer):
         model = GraphTask
         fields = ['id', 'current_step', 'error_message', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+LLM_PROVIDER_CHOICES = ["groq", "ollama", "openrouter"]
+
+
+class QueryRequestSerializer(serializers.Serializer):
+    question = serializers.CharField(min_length=3, max_length=1000)
+    top_k = serializers.IntegerField(min_value=1, max_value=20, default=5)
+    provider = serializers.ChoiceField(choices=LLM_PROVIDER_CHOICES, required=False, default="")
+
+
+class QuerySourceSerializer(serializers.Serializer):
+    chunk_index = serializers.IntegerField()
+    content = serializers.CharField()
+    document_id = serializers.UUIDField()
+
+
+class QueryResponseSerializer(serializers.Serializer):
+    answer = serializers.CharField()
+    provider = serializers.CharField()
+    sources = QuerySourceSerializer(many=True)

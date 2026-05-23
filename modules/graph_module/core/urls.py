@@ -5,6 +5,7 @@ from apps.views import (
     DocumentDetailView,
     DocumentTaskStatusView,
     DocumentChunkListView,
+    QueryView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('api/documents/<uuid:document_id>/', DocumentDetailView.as_view()),
     path('api/documents/<uuid:document_id>/status/', DocumentTaskStatusView.as_view()),
     path('api/documents/<uuid:document_id>/chunks/', DocumentChunkListView.as_view()),
+    path('api/query/', QueryView.as_view()),
 ]
