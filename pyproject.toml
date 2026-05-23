@@ -1,0 +1,2 @@
+[tool.uv.workspace]
+members = ["modules/user_module", "modules/graph_module"]
