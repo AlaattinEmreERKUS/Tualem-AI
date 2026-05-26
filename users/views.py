@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-
+from django.contrib.auth.decorators import login_required
 
 def register_view(request):
     if request.method == "POST":
@@ -57,14 +57,14 @@ def login_view(request):
 
     return render(request, "users/login.html")
 
-
+@login_required(login_url='/login/')
 def dashboard_view(request):
-    if not request.user.is_authenticated:
-        return redirect("/login/")
-
+   
     return render(request, "users/dashboard.html")
 
 
 def logout_view(request):
     logout(request)
     return redirect("/login/")
+def profile_view(request):
+    return render(request, "users/profile.html")

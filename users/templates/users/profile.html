@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Profil{% endblock %}
+
+{% block nav %}
+<a href="/dashboard/" class="nav-link">Dashboard</a>
+<a href="/profile/" class="nav-link">Profil</a>
+{% endblock %}
+{% block content %}
+
+<div class="profile-page">
+
+
+    <div class="profile-left">
+
+        <div class="profile-card">
+
+            <div class="profile-avatar">
+
+  <img src="{{ request.user.profile.image.url }}" alt="profile">
+
+</div>
+
+            <h1>{{ request.user.username }}</h1>
+
+            <p>{{ request.user.email }}</p>
+
+            <button class="edit-btn" onclick="openProfileModal()">
+                Profili Düzenle
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="profile-right">
+
+      
+        <div class="profile-stats">
+
+            <div class="stat-box">
+                <h2>12</h2>
+                <p>Kaynak</p>
+            </div>
+
+            <div class="stat-box">
+                <h2>48</h2>
+                <p>AI Sohbeti</p>
+            </div>
+
+            <div class="stat-box">
+                <h2>19</h2>
+                <p>Analiz</p>
+            </div>
+
+        </div>
+
+        <div class="activity-box">
+
+            <h2>Son Aktiviteler</h2>
+
+            <div class="activity-item">
+                📄 Yeni kaynak eklendi
+            </div>
+
+            <div class="activity-item">
+                🧠 AI analiz oluşturdu
+            </div>
+
+            <div class="activity-item">
+                💬 Yeni sohbet başlatıldı
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div id="profileModal" class="profile-modal">
+
+  <div class="profile-modal-content">
+
+    <div class="modal-top">
+      <h2>Profili Düzenle</h2>
+
+      <button onclick="closeProfileModal()" class="close-modal-btn">
+        ✕
+      </button>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+
+      {% csrf_token %}
+
+      <label>Kullanıcı Adı</label>
+      <input type="text" name="username" value="{{ request.user.username }}">
+
+      <label>Email</label>
+      <input type="email" name="email" value="{{ request.user.email }}">
+
+      <label>Yeni Şifre</label>
+      <input type="password" name="password1">
+
+      <label>Şifre Tekrar</label>
+      <input type="password" name="password2">
+
+      <label>Profil Fotoğrafı</label>
+<input type="file" name="image">
+
+      <button type="submit" class="save-profile-btn">
+        Değişiklikleri Kaydet
+      </button>
+
+    </form>
+
+  </div>
+
+</div>
+
+<script>
+
+function openProfileModal() {
+  document.getElementById("profileModal").style.display = "flex";
+}
+
+function closeProfileModal() {
+  document.getElementById("profileModal").style.display = "none";
+}
+
+</script>
+
+<div id="profileModal" class="profile-modal">
+
+  <div class="profile-modal-content">
+
+    <div class="modal-top">
+      <h2>Profili Düzenle</h2>
+
+      <button onclick="closeProfileModal()" class="close-modal-btn">
+        ✕
+      </button>
+    </div>
+
+    <form method="POST">
+
+      {% csrf_token %}
+
+      <label>Kullanıcı Adı</label>
+      <input type="text" name="username" value="{{ request.user.username }}">
+
+      <label>Email</label>
+      <input type="email" name="email" value="{{ request.user.email }}">
+
+      <label>Yeni Şifre</label>
+      <input type="password" name="password1">
+
+      <label>Şifre Tekrar</label>
+      <input type="password" name="password2">
+
+      <button type="submit" class="save-profile-btn">
+        Değişiklikleri Kaydet
+      </button>
+
+    </form>
+
+  </div>
+
+</div>
+
+<script>
+
+function openProfileModal() {
+  document.getElementById("profileModal").style.display = "flex";
+}
+
+function closeProfileModal() {
+  document.getElementById("profileModal").style.display = "none";
+}
+
+</script>
+
+{% endblock %}

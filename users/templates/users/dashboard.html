@@ -1,45 +1,260 @@
+{% extends 'base.html' %}
+{% block nav %}
+<a href="/dashboard/" class="nav-link">dashboard</a>
+<a href="/profile/" class="nav-link">Profil</a>
+{% endblock %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-</head>
-<body>
 
-<div class="wrap">
-    <div class="card">
-        <div class="brand">
-            <div class="logo">Proje Adı</div>
-            <button class="theme-btn" onclick="toggleTheme()" type="button">🌙</button>
-        </div>
+{% block content %}
+<style>
+    .main-content { padding: 0 !important; display: block !important; }
 
-        <h1 class="title">Hoş geldin</h1>
-        <p class="sub">{{ request.user.username }} olarak giriş yaptın.</p>
 
-        <div class="row">
-            <a href="/logout/">Çıkış Yap</a>
-        </div>
-    </div>
-</div>
-
-<script>
-function toggleTheme() {
-    document.body.classList.toggle("dark");
-
-    if (document.body.classList.contains("dark")) {
-        localStorage.setItem("theme", "dark");
-    } else {
-        localStorage.setItem("theme", "light");
+    .delete-source-btn {
+        background: transparent;
+        border: none;
+        color: var(--error-text);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0 5px;
+        opacity: 0.6;
+        transition: 0.2s;
     }
-}
+    .delete-source-btn:hover { opacity: 1; transform: scale(1.2); }
+    .source-actions { display: flex; align-items: center; gap: 8px; }
 
-if (localStorage.getItem("theme") === "dark") {
-    document.body.classList.add("dark");
-}
+   
+    .typing-dots span {
+        animation: blink 1.4s infinite both;
+        font-size: 20px;
+        margin: 0 2px;
+        font-weight: bold;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+        0% { opacity: 0.2; }
+        20% { opacity: 1; }
+        100% { opacity: 0.2; }
+    }
+
+    
+    .no-source-text { font-size: 13px; color: var(--muted); text-align: center; padding: 20px 0; }
+    .source-name-text { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; color: var(--text); }
+    .add-source-footer-btn { width: 100%; padding: 12px; margin-top: auto; background: var(--input-bg); border: 1px dashed var(--input-border); border-radius: 10px; color: var(--text); cursor: pointer; font-weight: 600; transition: 0.2s; }
+    .add-source-footer-btn:hover { background: var(--button-bg); color: var(--button-text); border-style: solid; }
+    .web-add-submit-btn { width: 100%; padding: 12px; margin-top: 15px; background: var(--button-bg); color: var(--button-text); border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .web-search-box { width: 100%; display: flex; flex-direction: column; }
+</style>
+
+<div id="workspace-root"></div>
+
+
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const WorkspaceApp = () => {
+        const [showModal, setShowModal] = useState(false);
+        const [showWebSearch, setShowWebSearch] = useState(false);
+        const [isWorkspaceActive, setIsWorkspaceActive] = useState(false);
+        const [sources, setSources] = useState([]);
+        const [webUrl, setWebUrl] = useState('');
+        const [messages, setMessages] = useState([{ sender: 'ai', text: 'Analiz hazır. Nereden başlayalım?' }]);
+        const [inputValue, setInputValue] = useState('');
+        const [isTyping, setIsTyping] = useState(false);
+
+        const messagesEndRef = useRef(null);
+
+        const scrollToBottom = () => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        };
+
+        useEffect(() => {
+            scrollToBottom();
+        }, [messages, isTyping]);
+
+        const deleteSource = (id) => {
+            setSources(sources.filter(s => s.id !== id));
+        };
+
+        const handleFileUpload = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files).map(f => ({ 
+                    id: Math.random().toString(36).substr(2, 9), 
+                    name: `📁 ${f.name}`, 
+                    active: true 
+                }));
+                setSources(prev => [...prev, ...files]);
+                setIsWorkspaceActive(true);
+                setShowModal(false);
+            };
+            input.click();
+        };
+
+        const handleAddWebSource = () => {
+            if (webUrl.trim() === '') return;
+            setSources(prev => [...prev, { 
+                id: Math.random().toString(36).substr(2, 9), 
+                name: `🌐 ${webUrl}`, 
+                active: true 
+            }]);
+            setWebUrl('');
+            setShowWebSearch(false);
+            setIsWorkspaceActive(true);
+        };
+
+        const sendMessage = () => {
+            if (inputValue.trim() === '') return;
+            const currentText = inputValue;
+            setMessages(prev => [...prev, { sender: 'user', text: currentText }]);
+            setInputValue('');
+            
+            setIsTyping(true);
+            setTimeout(() => {
+                setMessages(prev => [...prev, { 
+                    sender: 'ai', 
+                    text: `"${currentText}" içeriğini kaynaklarınla karşılaştırarak inceliyorum. Başka bir sorun var mı?` 
+                }]);
+                setIsTyping(false); 
+            }, 1500);
+        };
+
+        const handleTestAction = (type) => {
+            let actionText = "";
+            let aiResponse = "";
+
+            if (type === 'test') {
+                actionText = "📝 Test oluşturur musun?";
+                aiResponse = "Kaynaklarını tarıyorum... Senin için bir test hazırlıyorum. Birazdan paylaşacağım.";
+            } else if (type === 'ozet') {
+                actionText = "📋 Özet çıkar.";
+                aiResponse = "Belgelerini analiz ediyorum. Ana başlıklar halinde bir özet hazırlıyorum...";
+            } else if (type === 'yolharitasi') {
+                actionText = "🗺️ Yol haritası çıkar.";
+                aiResponse = "Harika! Kaynaklarına göre senin için bir öğrenme planı oluşturuyorum.";
+            }
+
+            setMessages(prev => [...prev, { sender: 'user', text: actionText }]);
+            setIsTyping(true);
+            setTimeout(() => {
+                setMessages(prev => [...prev, { sender: 'ai', text: aiResponse }]);
+                setIsTyping(false);
+            }, 1200);
+        };
+
+        return (
+            <div className="workspace-wrapper">
+                {}
+                {!isWorkspaceActive && !showModal && !showWebSearch && (
+                    <div className="empty-state-centered">
+                        <button className="add-btn" onClick={() => setShowModal(true)}>+</button>
+                        <p>Yeni bir not defteri oluşturmak için tıklayın</p>
+                    </div>
+                )}
+
+                {}
+                {(showModal || showWebSearch) && (
+                    <div className="modal-overlay">
+                        <div className="modal-content">
+                            {showModal ? (
+                                <div>
+                                    <h3>Yeni Kaynak Ekle</h3>
+                                    <div className="modal-options">
+                                        <button className="modal-opt-btn" onClick={handleFileUpload}>📁 Kaynak Yükle</button>
+                                        <button className="modal-opt-btn" onClick={() => {setShowWebSearch(true); setShowModal(false);}}>🌐 Web'de Ara</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="web-search-box">
+                                    <h3>İnternetten Kaynak Ekle</h3>
+                                    <input 
+                                        type="text" 
+                                        className="chat-input" 
+                                        value={webUrl} 
+                                        onChange={(e)=>setWebUrl(e.target.value)} 
+                                        placeholder="URL girin veya konu yazın..." 
+                                    />
+                                    <button className="web-add-submit-btn" onClick={handleAddWebSource}>Ekle</button>
+                                </div>
+                            )}
+                            <button className="modal-close-link" onClick={() => {setShowModal(false); setShowWebSearch(false);}}>Kapat</button>
+                        </div>
+                    </div>
+                )}
+
+                {}
+                {isWorkspaceActive && (
+                    <div className="dashboard-layout">
+                        {}
+                        <aside className="side-panel">
+                            <h4>Kaynaklarım</h4>
+                            <div className="source-list">
+                                {sources.length === 0 ? <p className="no-source-text">Henüz kaynak eklenmedi.</p> : 
+                                sources.map(s => (
+                                    <div className="source-item" key={s.id}>
+                                        <span className="source-name-text" title={s.name}>{s.name}</span>
+                                        <div className="source-actions">
+                                            <input type="checkbox" defaultChecked={s.active} />
+                                            {}
+                                            <button onClick={() => deleteSource(s.id)} className="delete-source-btn">×</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="add-source-footer-btn" onClick={() => setShowModal(true)}>+ Yeni Kaynak</button>
+                        </aside>
+
+                        {}
+                        <section className="main-panel">
+                            <div className="chat-messages">
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`msg ${m.sender}`}>{m.text}</div>
+                                ))}
+                                {}
+                                {isTyping && (
+                                    <div className="msg ai typing-dots">
+                                        <span>.</span><span>.</span><span>.</span>
+                                    </div>
+                                )}
+                                <div ref={messagesEndRef} />
+                            </div>
+                            <div className="chat-input-area">
+                                <input 
+                                    type="text" 
+                                    className="chat-input" 
+                                    value={inputValue} 
+                                    onChange={(e)=>setInputValue(e.target.value)} 
+                                    onKeyPress={(e)=>e.key==='Enter' && sendMessage()} 
+                                    placeholder="Sorunuzu yazın..." 
+                                />
+                                <button className="send-btn-icon" onClick={sendMessage}>➤</button>
+                            </div>
+                        </section>
+
+                        {}
+                        <aside className="tool-panel">
+                            <h4>İşlemler</h4>
+                            <div className="action-buttons">
+                                <button className="action-btn" onClick={() => handleTestAction('test')}>📝 Test Oluştur</button>
+                                <button className="action-btn" onClick={() => handleTestAction('ozet')}>📋 Özet Çıkar</button>
+                                <button className="action-btn" onClick={() => handleTestAction('yolharitasi')}>🗺️ Yol Haritası</button>
+                            </div>
+                        </aside>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('workspace-root'));
+    root.render(<WorkspaceApp />);
 </script>
-
-</body>
-</html>
+{% endblock %}
