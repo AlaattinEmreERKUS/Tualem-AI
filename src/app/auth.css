@@ -529,6 +529,7 @@ body.dark .nav-profile:hover {
     font-weight: 600;
 }
 
+
 .dashboard-layout {
     display: grid;
     grid-template-columns: 280px 1fr 300px;
@@ -537,6 +538,7 @@ body.dark .nav-profile:hover {
     gap: 20px;
     padding: 20px;
 }
+
 .dashboard-layout {
     display: grid;
     grid-template-columns: 280px 1fr 280px;
@@ -574,7 +576,7 @@ body.dark .nav-profile:hover {
     font-size: 14px;
 }
 
-/* Chat Alanı */
+
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -634,16 +636,17 @@ body.dark .nav-profile:hover {
     display: flex;
     flex-direction: column;
     align-items: center;    
-    justify-content: center; 
+    justify-content: center;
     box-sizing: border-box;
 }
+
 
 .empty-state-centered {
     display: flex;
     flex-direction: column;
     align-items: center;    
     justify-content: center;
-    gap: 20px;              
+    gap: 20px;            
     width: 100%;
     text-align: center;
 }
@@ -701,6 +704,7 @@ body.dark .nav-profile:hover {
 .action-btn:hover { background: var(--button-bg); color: var(--button-text); }
 .send-btn-icon { border: none; border-radius: 10px; cursor: pointer; padding: 0 15px; background: var(--button-bg); color: var(--button-text); }
 
+
 .no-source-text {
     font-size: 13px;
     color: var(--muted);
@@ -738,7 +742,7 @@ body.dark .nav-profile:hover {
 .web-add-submit-btn {
     width: 100%;
     padding: 12px;
-    margin-top: 15px; 
+    margin-top: 15px;
     background: var(--button-bg);
     color: var(--button-text);
     border: none;
@@ -761,7 +765,6 @@ body.dark .nav-profile:hover {
     min-height: 40px;
     width: fit-content;
 }
-
 
 .delete-source-btn {
     background: transparent;
@@ -801,4 +804,187 @@ body.dark .nav-profile:hover {
 
 .chat-messages::-webkit-scrollbar-track {
     background: transparent;
+}
+
+
+.profile-page {
+  width: 100%;
+  max-width: 1300px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+}
+
+
+.profile-card {
+  background: var(--surface);
+  border: 1px solid var(--input-border);
+  border-radius: 24px;
+  padding: 32px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+
+.profile-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: var(--button-bg);
+  color: var(--button-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  font-size: 42px;
+  font-weight: bold;
+  overflow: hidden;
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-card h1 {
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.profile-card p {
+  color: var(--muted);
+}
+
+.edit-btn {
+  margin-top: 22px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  cursor: pointer;
+}
+
+
+
+.profile-right {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--input-border);
+  border-radius: 20px;
+  padding: 26px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+
+.stat-box h2 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.stat-box p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+
+.activity-box {
+  background: var(--surface);
+  border: 1px solid var(--input-border);
+  border-radius: 24px;
+  padding: 28px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+
+.activity-box h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.activity-item {
+  padding: 14px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.05);
+}
+
+body.dark .activity-item {
+  background: rgba(255,255,255,0.06);
+}
+
+
+
+@media (max-width: 1000px) {
+
+  .profile-page {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-stats {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+.profile-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  backdrop-filter: blur(6px);
+}
+
+.profile-modal-content {
+  width: 100%;
+  max-width: 500px;
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.modal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.close-modal-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.save-profile-btn {
+  width: 100%;
+  margin-top: 22px;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  font-weight: 600;
+  cursor: pointer;
 }

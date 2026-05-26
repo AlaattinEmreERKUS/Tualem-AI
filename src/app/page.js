@@ -41,7 +41,7 @@ export default function WorkspacePage() {
       setSources([...sources, newSource]);
       setIsWorkspaceActive(true);
       setShowModal(false);
-      // AI'dan karşılama mesajı
+     
       setMessages(prev => [...prev, { sender: 'ai', text: `"${file.name}" dosyasını başarıyla analiz ettim. Bu döküman hakkında ne bilmek istersiniz?` }]);
     }
   };
@@ -121,7 +121,7 @@ export default function WorkspacePage() {
           </div>
         ) : (
           <div className="dashboard-layout">
-            {/* SOL PANEL */}
+            {}
             <aside className="side-panel">
               <h3 style={{fontSize: '16px', marginBottom: '15px'}}>Kaynaklarım</h3>
               <div className="chat-messages" style={{border: 'none', padding: 0}}>
@@ -135,7 +135,7 @@ export default function WorkspacePage() {
               <button className="add-source-footer-btn" onClick={() => setShowModal(true)}>+ Yeni Kaynak</button>
             </aside>
 
-            {/* ORTA PANEL */}
+            {}
             <section className="main-panel">
               <div className="chat-messages">
                 {messages.map((m, i) => (
@@ -157,7 +157,7 @@ export default function WorkspacePage() {
               </div>
             </section>
 
-            {/* SAĞ PANEL - ARTIK AKTİF */}
+            {}
             <aside className="tool-panel">
               <h3 style={{fontSize: '16px', marginBottom: '15px'}}>Hızlı İşlemler</h3>
               <div className="action-buttons">
@@ -170,7 +170,7 @@ export default function WorkspacePage() {
         )}
       </main>
 
-      {/* MODAL GÜNCELLEMESİ */}
+      {}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
