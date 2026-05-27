@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'apps.chat.apps.ChatConfig',
 ]
 
 REST_FRAMEWORK = {

@@ -57,6 +57,7 @@ services:
       POSTGRES_DB: tualem_db
       POSTGRES_USER: tualem_emre
       POSTGRES_PASSWORD: tualem_1234
+      PYTHONPATH: /app:/app/modules
     ports:
       - "8001:8001"
     depends_on:
@@ -83,6 +84,7 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: tualem_neo4j_password_123
       REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app:/app/modules
     ports:
       - "8002:8002"
     depends_on:
@@ -96,6 +98,32 @@ services:
       - ./modules/graph_module:/app
       - ./shared:/app/shared
       - media_data:/app/media
+
+  chat_module:
+    build:
+      context: .
+      dockerfile: modules/chat_module/Dockerfile
+    container_name: tualem_chat_module
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: tualem_db
+      POSTGRES_USER: tualem_emre
+      POSTGRES_PASSWORD: tualem_1234
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app:/app/modules
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./modules/chat_module:/app
+      - ./shared:/app/shared
 
   celery_worker:
     build:
@@ -124,6 +152,7 @@ services:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
+      - ./modules/chat_module:/app/modules/chat_module
       - ./shared:/app/shared
       - media_data:/app/media
 

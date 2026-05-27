@@ -1,6 +1,5 @@
 from rest_framework import serializers
-# chat app'i altındaki modelleri import ediyoruz
-from apps.chat.models import ChatRoom, ChatMessage
+from chat.models import ChatRoom, ChatMessage
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,7 +9,6 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    # Oda detayına bakıldığında içindeki son mesajları da görebilmek için:
     messages = ChatMessageSerializer(many=True, read_only=True)
     
     class Meta:
