@@ -150,3 +150,17 @@ class RefreshTokenView(APIView):
             return Response({"error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
         except UserBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+class TokenVerifyView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response({"error": "Token sağlanmadı."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            result = UserService.verify(token)
+            return Response(result, status=status.HTTP_200_OK)
+        except InvalidTokenException as e:
+            return Response({"valid": False, "error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
+        except UserBaseException as e:
+            return Response({"valid": False, "error": e.message}, status=status.HTTP_400_BAD_REQUEST)

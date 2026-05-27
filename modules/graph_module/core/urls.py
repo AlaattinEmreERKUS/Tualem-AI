@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from apps.views import (
     DocumentListView,
     DocumentDetailView,
@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/documents/<uuid:document_id>/status/', DocumentTaskStatusView.as_view()),
     path('api/documents/<uuid:document_id>/chunks/', DocumentChunkListView.as_view()),
     path('api/query/', QueryView.as_view()),
+    path('api/graph/chat/', include('apps.chat.urls')),
 ]
