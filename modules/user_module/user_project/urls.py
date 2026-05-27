@@ -8,6 +8,7 @@ from apps.views import (
     RegisterView,
     LoginView,
     RefreshTokenView,
+    TokenVerifyView,
 )
 
 urlpatterns = [
@@ -21,4 +22,6 @@ urlpatterns = [
     path('api/auth/register/', RegisterView.as_view()),
     path('api/auth/login/', LoginView.as_view()),
     path('api/auth/refresh/', RefreshTokenView.as_view()),
+    path('api/auth/verify/', TokenVerifyView.as_view()),
+    
 ]

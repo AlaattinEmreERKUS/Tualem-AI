@@ -20,6 +20,8 @@ class Document(models.Model):
         ],
         default='pending'
     )
+    class Meta:
+        app_label = 'chat'
 
 class ContentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -28,6 +30,8 @@ class ContentChunk(models.Model):
     chunk_index = models.IntegerField()
     embedding = VectorField(dimensions=384, null=True, blank=True)
     is_embedded = models.BooleanField(default=False)
+    class Meta:
+        app_label = 'chat'
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -43,8 +47,10 @@ class GraphTask(models.Model):
             ('completed', 'Tamamlandı'),
             ('failed', 'Başarısız'),
         ],
-        default='text_extraction'
+        default='text_extraction'   
     )
     error_message = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        app_label = 'chat'

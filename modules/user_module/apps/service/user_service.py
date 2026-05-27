@@ -53,3 +53,15 @@ class UserService:
             raise InvalidTokenException()
 
         return {"access_token": generate_access_token(user)}
+    
+    @staticmethod
+    def verify(token: str) -> dict:
+        payload = decode_token(token)
+        if not payload or payload.get("type") != "access":
+            raise InvalidTokenException()
+
+        user = UserRepository.get_by_id(payload["user_id"])
+        if not user:
+            raise InvalidTokenException()
+
+        return {"valid": True, "user_id": user.id}
