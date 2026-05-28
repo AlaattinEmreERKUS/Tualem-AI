@@ -80,6 +80,8 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
     async def handle_chat_message(self, data):
         user_message = data.get('message')
         model = data.get('model', '')
+        provider = data.get('provider', '')
+        action = data.get('action', '')
         if not user_message:
             return
 
@@ -88,7 +90,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {'type': 'chat_message', 'role': 'user', 'message': user_message}
         )
-        await self.process_rag_and_llm(user_message, model)
+        await self.process_rag_and_llm(user_message, model, provider, action)
 
     async def handle_literature_search(self, data):
         topic = data.get('topic', '').strip()
@@ -107,7 +109,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         )
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=600.0) as client:
                 response = await client.post(
                     f"{GRAPH_MODULE_URL}/api/documents/search/",
                     json={"topic": topic, "max_results": max_results},
@@ -142,17 +144,17 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    async def process_rag_and_llm(self, user_message, model=""):
+    async def process_rag_and_llm(self, user_message, model="", provider="", action=""):
         await self.channel_layer.group_send(
             self.room_group_name,
             {'type': 'chat_message', 'role': 'system', 'message': 'Grafik veritabanında araştırma yapılıyor...'}
         )
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=600.0) as client:
                 response = await client.post(
                     f"{GRAPH_MODULE_URL}/api/query/",
-                    json={"question": user_message, "top_k": 5, "model": model},
+                    json={"question": user_message, "top_k": 5, "model": model, "provider": provider, "action": action, "room_id": str(self.room_id)},
                     headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
                 )
 
