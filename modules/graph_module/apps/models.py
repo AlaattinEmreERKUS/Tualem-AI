@@ -4,7 +4,7 @@ from pgvector.django import VectorField
 
 class Document(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.UUIDField()
+    user_id = models.CharField(max_length=100)
     file_name = models.CharField(max_length=300)
     file_type = models.CharField(max_length=300)
     file = models.FileField(upload_to='documents/')

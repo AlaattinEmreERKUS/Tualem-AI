@@ -2,16 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { setToken } from '@/lib/auth';
 import '../auth.css';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -90,15 +93,26 @@ export default function RegisterPage() {
                   const res = await fetch('/api/auth/register/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ full_name: fullName, username, email, password }),
+                    body: JSON.stringify({ fullname: fullName, username, email, password, confirm_password: confirmPassword }),
                   });
                   const data = await res.json();
                   if (!res.ok) {
-                    const msg = data.username?.[0] || data.email?.[0] || data.password?.[0] || data.error || 'Kayıt başarısız.';
+                    const msg = data.username?.[0] || data.email?.[0] || data.password?.[0] || data.confirm_password?.[0] || data.error || 'Kayıt başarısız.';
                     setError(msg);
                     return;
                   }
-                  router.push('/login');
+                  const loginRes = await fetch('/api/auth/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: username, password }),
+                  });
+                  if (loginRes.ok) {
+                    const loginData = await loginRes.json();
+                    setToken(loginData.access_token);
+                    router.push('/dashboard');
+                  } else {
+                    router.push('/login');
+                  }
                 } catch {
                   setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
                 } finally {
@@ -116,6 +130,13 @@ export default function RegisterPage() {
                   <input type={showPass ? "text" : "password"} placeholder="Şifrenizi girin" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   <button type="button" className="show-btn" onClick={() => setShowPass(!showPass)}>
                     {showPass ? "Gizle" : "Göster"}
+                  </button>
+                </div>
+                <label>Şifre Tekrar</label>
+                <div className="password-wrapper">
+                  <input type={showConfirm ? "text" : "password"} placeholder="Şifrenizi tekrar girin" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                  <button type="button" className="show-btn" onClick={() => setShowConfirm(!showConfirm)}>
+                    {showConfirm ? "Gizle" : "Göster"}
                   </button>
                 </div>
                 <button className="btn" type="submit" disabled={loading}>

@@ -1,211 +1,104 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { isAuthenticated } from '@/lib/auth';
 import './auth.css';
 
-export default function WorkspacePage() {
-  
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isWorkspaceActive, setIsWorkspaceActive] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  
-  
-  const [sources, setSources] = useState([]);
-  const [messages, setMessages] = useState([{ sender: 'ai', text: 'Analiz hazır. Nereden başlayalım?' }]);
-  const [inputValue, setInputValue] = useState('');
-  const [webUrl, setWebUrl] = useState('');
-  const [showWebInput, setShowWebInput] = useState(false);
+export default function LandingPage() {
+  const [isDark, setIsDark] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
 
-  
-  const fileInputRef = useRef(null);
-
-  
   useEffect(() => {
+    setLoggedIn(isAuthenticated());
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') setIsDarkMode(true);
+    if (savedTheme === 'dark') {
+      setIsDark(true);
+      document.body.classList.add('dark');
+    }
   }, []);
 
-  useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.body.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const newSource = { id: Date.now(), name: `📚 ${file.name}`, type: 'file' };
-      setSources([...sources, newSource]);
-      setIsWorkspaceActive(true);
-      setShowModal(false);
-     
-      setMessages(prev => [...prev, { sender: 'ai', text: `"${file.name}" dosyasını başarıyla analiz ettim. Bu döküman hakkında ne bilmek istersiniz?` }]);
-    }
-  };
-
-  const handleWebAdd = () => {
-    if (!webUrl.trim()) return;
-    const newSource = { id: Date.now(), name: `🌐 ${webUrl.replace('https://', '')}`, type: 'web' };
-    setSources([...sources, newSource]);
-    setIsWorkspaceActive(true);
-    setShowModal(false);
-    setShowWebInput(false);
-    setWebUrl('');
-    setMessages(prev => [...prev, { sender: 'ai', text: `Web kaynağı içeriği başarıyla çekildi. Analize başlayabiliriz.` }]);
-  };
-
-  const sendMessage = (text = inputValue) => {
-    const messageToSend = text || inputValue;
-    if (!messageToSend.trim()) return;
-    
-    setMessages(prev => [...prev, { sender: 'user', text: messageToSend }]);
-    if (!text) setInputValue('');
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, { sender: 'ai', text: 'Kaynaklarımı tarıyorum, saniyeler içinde cevaplıyorum...' }]);
-    }, 800);
-  };
-
-  
-  const runQuickAction = (actionType) => {
-    let userMsg = "";
-    let aiResponse = "";
-
-    switch(actionType) {
-      case 'summary':
-        userMsg = "Bu kaynağın özetini çıkarır mısın?";
-        aiResponse = "Tabii, dökümanı analiz ettim. İşte ana noktalar: \n• Temel Kavramlar\n• Yöntem Analizi\n• Sonuç ve Öneriler...";
-        break;
-      case 'test':
-        userMsg = "Bu içerikten bana bir test oluştur.";
-        aiResponse = "İçeriğe dayalı 5 soruluk çoktan seçmeli test hazırladım. İlk soruyla başlayalım mı?";
-        break;
-      case 'map':
-        userMsg = "Bilgi haritasını göster.";
-        aiResponse = "Dökümandaki kavramlar arası ilişkileri haritalandırıyorum. Görselleştirme hazır!";
-        break;
-      default: break;
-    }
-
-    setMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { sender: 'ai', text: aiResponse }]);
-    }, 1000);
+  const toggleTheme = () => {
+    const newMode = !isDark;
+    setIsDark(newMode);
+    document.body.classList.toggle('dark');
+    localStorage.setItem('theme', newMode ? 'dark' : 'light');
   };
 
   return (
-    <div className="page">
-      <nav className="navbar">
-        <div className="nav-left">ProjeAdı</div>
-        <div className="nav-right">
-          <button className="theme-btn" onClick={() => setIsDarkMode(!isDarkMode)}>
-            {isDarkMode ? '☀️ Açık' : '🌙 Koyu'}
+    <div className="page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Navbar */}
+      <nav className="navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 4rem' }}>
+        <div style={{ fontWeight: 800, fontSize: '1.4rem' }}>🧠 Tualem AI</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button className="theme-btn" onClick={toggleTheme} type="button">
+            {isDark ? '☀️ Açık' : '🌙 Koyu'}
           </button>
-          <div className="nav-profile">
-            <div className="profile-avatar">U</div>
-            <span style={{fontSize: '14px', fontWeight: '600'}}>Kullanıcı</span>
-          </div>
+          {loggedIn ? (
+            <Link href="/dashboard" className="btn" style={{ padding: '10px 22px', borderRadius: '8px', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" style={{ padding: '10px 22px', borderRadius: '8px', border: '1.5px solid var(--button-bg)', color: 'var(--text)', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
+                Giriş Yap
+              </Link>
+              <Link href="/register" className="btn" style={{ padding: '10px 22px', borderRadius: '8px', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
+                Kayıt Ol
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
-      <main className="workspace-wrapper">
-        {!isWorkspaceActive ? (
-          <div className="empty-state-centered">
-            <button className="add-btn" onClick={() => setShowModal(true)}>+</button>
-            <p className="no-source-text" style={{fontWeight: '600'}}>
-              Yeni bir çalışma alanı oluşturmak için kaynak ekleyin
-            </p>
-          </div>
-        ) : (
-          <div className="dashboard-layout">
-            {}
-            <aside className="side-panel">
-              <h3 style={{fontSize: '16px', marginBottom: '15px'}}>Kaynaklarım</h3>
-              <div className="chat-messages" style={{border: 'none', padding: 0}}>
-                {sources.map(s => (
-                  <div key={s.id} className="source-item">
-                    <span className="source-name-text">{s.name}</span>
-                    <button className="delete-source-btn" onClick={() => setSources(sources.filter(src => src.id !== s.id))}>×</button>
-                  </div>
-                ))}
-              </div>
-              <button className="add-source-footer-btn" onClick={() => setShowModal(true)}>+ Yeni Kaynak</button>
-            </aside>
-
-            {}
-            <section className="main-panel">
-              <div className="chat-messages">
-                {messages.map((m, i) => (
-                  <div key={i} className={`msg ${m.sender === 'ai' ? 'ai' : ''}`}
-                    style={m.sender === 'user' ? { alignSelf: 'flex-end', background: 'var(--button-bg)', color: 'var(--button-text)' } : {}}>
-                    {m.text}
-                  </div>
-                ))}
-              </div>
-              <div className="chat-input-area">
-                <input 
-                  className="chat-input" 
-                  placeholder="Araştırman hakkında bir soru sor..." 
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                />
-                <button className="send-btn-icon" onClick={() => sendMessage()}>➤</button>
-              </div>
-            </section>
-
-            {}
-            <aside className="tool-panel">
-              <h3 style={{fontSize: '16px', marginBottom: '15px'}}>Hızlı İşlemler</h3>
-              <div className="action-buttons">
-                <button className="action-btn" onClick={() => runQuickAction('summary')}>📝 Özet Çıkar</button>
-                <button className="action-btn" onClick={() => runQuickAction('test')}>📋 Test Oluştur</button>
-                <button className="action-btn" onClick={() => runQuickAction('map')}>🗺️ Bilgi Haritası</button>
-              </div>
-            </aside>
-          </div>
-        )}
-      </main>
-
-      {}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="title" style={{fontSize: '22px', marginBottom: '10px'}}>Kaynak Ekle</h2>
-            
-            {!showWebInput ? (
-              <div className="modal-options">
-                {}
-                <input type="file" ref={fileInputRef} style={{display:'none'}} onChange={handleFileChange} />
-                <button className="modal-opt-btn" onClick={() => fileInputRef.current.click()}>
-                  📁 Cihazdan Dosya Yükle
-                </button>
-                <button className="modal-opt-btn" onClick={() => setShowWebInput(true)}>
-                  🌐 Web Bağlantısı Ekle
-                </button>
-              </div>
-            ) : (
-              <div className="web-input-area">
-                <input 
-                  type="text" 
-                  className="chat-input" 
-                  placeholder="https://example.com" 
-                  style={{marginBottom:'10px', width:'100%'}}
-                  value={webUrl}
-                  onChange={(e) => setWebUrl(e.target.value)}
-                />
-                <button className="btn" onClick={handleWebAdd}>Ekle</button>
-                <button className="modal-close" style={{marginTop:'5px'}} onClick={() => setShowWebInput(false)}>Geri Dön</button>
-              </div>
-            )}
-            
-            {!showWebInput && <button className="modal-close" onClick={() => setShowModal(false)}>Vazgeç</button>}
-          </div>
+      {/* Hero */}
+      <section style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem 2rem' }}>
+        <div className="auth-badge" style={{ marginBottom: '1.5rem' }}>Graph RAG · Neo4j · pgvector · LLM</div>
+        <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 800, lineHeight: 1.2, maxWidth: '800px', marginBottom: '1.5rem' }}>
+          Belgelerinizle konuşun,<br />bilgiyi grafikleştirin.
+        </h1>
+        <p style={{ fontSize: '1.15rem', maxWidth: '600px', opacity: 0.75, marginBottom: '2.5rem', lineHeight: 1.7 }}>
+          Tualem AI, yüklediğiniz dokümanları vektör ve bilgi grafı olarak saklar.
+          Sorularınıza kaynaklarınıza dayalı, bağlamsal yanıtlar üretir.
+        </p>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Link href="/register" className="btn" style={{ padding: '14px 36px', borderRadius: '10px', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+            Ücretsiz Başla
+          </Link>
+          <Link href="/login" style={{ padding: '14px 36px', borderRadius: '10px', fontSize: '1rem', fontWeight: 600, border: '1.5px solid var(--button-bg)', color: 'var(--text)', textDecoration: 'none', display: 'inline-block' }}>
+            Giriş Yap
+          </Link>
         </div>
-      )}
+      </section>
+
+      {/* Özellikler */}
+      <section style={{ padding: '4rem 4rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
+        {[
+          { icon: '📄', title: 'Belge Yükle', desc: 'PDF, TXT veya DOCX dosyalarınızı yükleyin. Sistem otomatik olarak chunk\'lar ve embed eder.' },
+          { icon: '🔬', title: 'arXiv Araması', desc: 'Belge yoksa bir konu girin — sistem arXiv\'den ilgili makaleleri bulup işleme alır.' },
+          { icon: '🕸️', title: 'Bilgi Grafı', desc: 'Belgelerinizdeki kavramlar Neo4j grafiğinde ilişkilendirilerek daha derin bağlam oluşturulur.' },
+          { icon: '💬', title: 'Gerçek Zamanlı Chat', desc: 'WebSocket ile anlık sohbet. Yapay zeka kaynaklarınıza dayanarak yanıtlar üretir.' },
+        ].map((f) => (
+          <div key={f.title} className="feature-card" style={{ padding: '28px', borderRadius: '14px' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>{f.icon}</div>
+            <h3 style={{ fontWeight: 700, marginBottom: '8px' }}>{f.title}</h3>
+            <p style={{ opacity: 0.75, lineHeight: 1.6, fontSize: '0.9rem' }}>{f.desc}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* CTA */}
+      <section style={{ textAlign: 'center', padding: '3rem 2rem 5rem' }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1rem' }}>Araştırmanıza bugün başlayın</h2>
+        <Link href="/register" className="btn" style={{ padding: '14px 40px', borderRadius: '10px', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+          Hesap Oluştur
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ textAlign: 'center', padding: '1.5rem', fontSize: '0.8rem', opacity: 0.5, borderTop: '1px solid rgba(128,128,128,0.2)' }}>
+        © 2026 Tualem AI — Graph RAG destekli araştırma asistanı
+      </footer>
     </div>
   );
 }

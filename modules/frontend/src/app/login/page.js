@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -129,14 +129,14 @@ export default function LoginPage() {
                   const res = await fetch('/api/auth/login/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
+                    body: JSON.stringify({ identifier, password }),
                   });
                   const data = await res.json();
                   if (!res.ok) {
                     setError(data.detail || data.error || 'Kullanıcı adı veya şifre hatalı.');
                     return;
                   }
-                  setToken(data.access);
+                  setToken(data.access_token);
                   router.push('/dashboard');
                 } catch {
                   setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
@@ -144,12 +144,12 @@ export default function LoginPage() {
                   setLoading(false);
                 }
               }}>
-                <label>Kullanıcı Adı</label>
+                <label>Kullanıcı Adı veya E-posta</label>
                 <input
                   type="text"
-                  placeholder="Kullanıcı adınızı girin"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Kullanıcı adı veya e-posta girin"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                 />
 

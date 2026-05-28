@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY modules/frontend/package.json modules/frontend/package-lock.json* ./
-RUN npm ci
+COPY modules/frontend/package.json ./
+RUN npm install
 
 COPY modules/frontend/ .
 

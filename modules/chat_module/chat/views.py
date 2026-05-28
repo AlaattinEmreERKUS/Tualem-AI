@@ -13,9 +13,9 @@ class ChatRoomViewSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request):
-        name = request.data.get('name')
+        name = request.data.get('title') or request.data.get('name')
         if not name:
-            return Response({"error": "Oda ismi (name) alanı zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Oda ismi (title) alanı zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
         
         room = ChatRepository.create_room(title=name, user_id=request.user.id)
         serializer = ChatRoomSerializer(room)
