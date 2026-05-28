@@ -125,6 +125,25 @@ services:
       - ./modules/chat_module:/app
       - ./shared:/app/shared
 
+  frontend:
+    build:
+      context: .
+      dockerfile: modules/frontend/Dockerfile
+    container_name: tualem_frontend
+    env_file:
+      - .env
+    environment:
+      USER_MODULE_URL: http://user_module:8001
+      GRAPH_MODULE_URL: http://graph_module:8002
+      CHAT_MODULE_URL: http://chat_module:8003
+      NEXT_PUBLIC_WS_URL: ws://localhost
+    ports:
+      - "3000:3000"
+    depends_on:
+      - user_module
+      - graph_module
+      - chat_module
+
   celery_worker:
     build:
       context: .
