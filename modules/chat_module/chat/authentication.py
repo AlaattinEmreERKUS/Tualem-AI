@@ -2,6 +2,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
 from shared.jwt_utils import decode_token, TokenExpiredError, InvalidTokenError
+from shared.token_blacklist import is_blacklisted
 
 
 class JWTUser:
@@ -25,4 +26,7 @@ class JWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Token süresi doldu.')
         except InvalidTokenError:
             raise AuthenticationFailed('Geçersiz token.')
+        jti = payload.get('jti')
+        if jti and is_blacklisted(jti):
+            raise AuthenticationFailed('Token geçersiz kılındı.')
         return (JWTUser(payload), token)
