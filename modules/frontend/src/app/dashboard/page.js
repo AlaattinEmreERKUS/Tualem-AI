@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [roomError, setRoomError] = useState('');
 
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -61,6 +62,7 @@ export default function DashboardPage() {
   }
 
   async function createRoom() {
+    setRoomError('');
     try {
       const res = await fetch("/api/chat/rooms/", {
         method: "POST",
@@ -71,8 +73,13 @@ export default function DashboardPage() {
         const room = await res.json();
         setRooms((prev) => [room, ...prev]);
         openRoom(room);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setRoomError(data.error || data.detail || `Hata: ${res.status}`);
       }
-    } catch {}
+    } catch (e) {
+      setRoomError('Sunucuya bağlanılamadı.');
+    }
   }
 
   function openRoom(room) {
@@ -209,6 +216,9 @@ export default function DashboardPage() {
         <div className="empty-state-centered" style={{ paddingTop: "60px" }}>
           <button className="add-btn" onClick={createRoom}>+</button>
           <p>Yeni bir sohbet odası oluşturmak için tıklayın</p>
+          {roomError && (
+            <p style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: '8px' }}>{roomError}</p>
+          )}
         </div>
       )}
 
