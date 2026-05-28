@@ -128,6 +128,9 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'apps/static'),
 ]
 
+MEDIA_URL = '/user-media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
 AUTHENTICATION_BACKENDS = [

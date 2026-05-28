@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from apps.views import (
     login_view,
     register_view,
@@ -10,6 +12,7 @@ from apps.views import (
     RefreshTokenView,
     TokenVerifyView,
     LogoutView,
+    ProfileView,
 )
 
 urlpatterns = [
@@ -25,4 +28,5 @@ urlpatterns = [
     path('api/auth/refresh/', RefreshTokenView.as_view()),
     path('api/auth/verify/', TokenVerifyView.as_view()),
     path('api/auth/logout/', LogoutView.as_view()),
-]
+    path('api/auth/profile/', ProfileView.as_view()),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

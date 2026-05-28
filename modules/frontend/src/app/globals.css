@@ -33,3 +33,12 @@ body {
 }
 
 * { box-sizing: border-box; }
+
+.doc-spinner {
+  display: inline-block;
+  animation: doc-spin 1.5s linear infinite;
+}
+@keyframes doc-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

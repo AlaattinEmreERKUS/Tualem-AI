@@ -18,6 +18,7 @@ from apps.serializers.user_serializers import (
     RegisterSerializer,
     LoginSerializer,
     RefreshTokenSerializer,
+    ProfileUpdateSerializer,
 )
 from apps.exceptions.user_exceptions import (
     UserBaseException,
@@ -177,6 +178,35 @@ class TokenVerifyView(APIView):
             return Response({"valid": False, "error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
         except UserBaseException as e:
             return Response({"valid": False, "error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileView(APIView):
+
+    def get(self, request):
+        try:
+            profile = UserService.get_profile(request.user.id, request=request)
+            return Response(profile, status=status.HTTP_200_OK)
+        except UserBaseException as e:
+            return Response({"error": e.message}, status=status.HTTP_404_NOT_FOUND)
+
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+        try:
+            result = UserService.update_profile(
+                user_id=request.user.id,
+                username=data.get("username") or None,
+                old_password=data.get("old_password") or None,
+                new_password=data.get("new_password") or None,
+                profile_photo=request.FILES.get("profile_photo"),
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except UserAlreadyExistsException as e:
+            return Response({"error": e.message}, status=status.HTTP_409_CONFLICT)
+        except UserBaseException as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LogoutView(APIView):

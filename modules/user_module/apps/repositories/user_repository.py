@@ -39,6 +39,24 @@ class UserRepository:
             return False
 
     @staticmethod
+    def save(user) -> bool:
+        try:
+            user.save()
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def username_taken(username: str, exclude_id=None) -> bool:
+        try:
+            qs = CustomUser.objects.filter(username=username)
+            if exclude_id:
+                qs = qs.exclude(id=exclude_id)
+            return qs.exists()
+        except Exception:
+            return False
+
+    @staticmethod
     def create(fullname: str, username: str, email: str, password: str):
         try:
             user = CustomUser.objects.create_user(

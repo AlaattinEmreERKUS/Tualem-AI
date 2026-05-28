@@ -70,6 +70,7 @@ services:
     volumes:
       - ./modules/user_module:/app
       - ./shared:/app/shared
+      - user_media_data:/app/media
 
   graph_module:
     build:
@@ -93,6 +94,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
@@ -175,10 +178,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      PYTHONPATH: /app:/app/modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
@@ -189,3 +195,4 @@ volumes:
   postgres_data:
   neo4j_data:
   media_data:
+  user_media_data:

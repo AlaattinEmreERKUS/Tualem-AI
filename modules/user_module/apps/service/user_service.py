@@ -5,6 +5,7 @@ from apps.exceptions.user_exceptions import (
     InvalidCredentialsException,
     UserAlreadyExistsException,
     InvalidTokenException,
+    UserBaseException,
 )
 
 
@@ -54,6 +55,47 @@ class UserService:
 
         return {"access_token": generate_access_token(user)}
     
+    @staticmethod
+    def get_profile(user_id, request=None) -> dict:
+        user = UserRepository.get_by_id(user_id)
+        if not user:
+            raise InvalidCredentialsException()
+        photo_url = None
+        if user.profile_photo:
+            try:
+                photo_url = request.build_absolute_uri(user.profile_photo.url) if request else user.profile_photo.url
+            except Exception:
+                pass
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "fullname": user.fullname,
+            "profile_photo": photo_url,
+        }
+
+    @staticmethod
+    def update_profile(user_id, username=None, old_password=None, new_password=None, profile_photo=None) -> dict:
+        user = UserRepository.get_by_id(user_id)
+        if not user:
+            raise InvalidCredentialsException()
+
+        if username:
+            if UserRepository.username_taken(username, exclude_id=user.id):
+                raise UserAlreadyExistsException("kullanıcı adı")
+            user.username = username
+
+        if old_password and new_password:
+            if not user.check_password(old_password):
+                raise UserBaseException("Mevcut şifre yanlış.")
+            user.set_password(new_password)
+
+        if profile_photo:
+            user.profile_photo = profile_photo
+
+        UserRepository.save(user)
+        return {"detail": "Profil güncellendi."}
+
     @staticmethod
     def verify(token: str) -> dict:
         payload = decode_token(token)

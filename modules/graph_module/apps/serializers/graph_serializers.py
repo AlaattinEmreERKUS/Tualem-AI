@@ -10,13 +10,14 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'status', 'uploaded_at', 'updated_at']
 
 
-_ALLOWED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.pptx'}
+_ALLOWED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.pptx', '.ppt'}
 _ALLOWED_MIME_TYPES = {
     'application/pdf',
     'text/plain',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
 }
 _MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 

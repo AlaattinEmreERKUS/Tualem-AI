@@ -42,3 +42,10 @@ class UserResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["id", "username", "email", "fullname"]
+
+
+class ProfileUpdateSerializer(serializers.Serializer):
+    username = serializers.CharField(min_length=3, max_length=150, required=False)
+    old_password = serializers.CharField(required=False, allow_blank=True, default="")
+    new_password = serializers.CharField(min_length=6, required=False, allow_blank=True, default="")
+    profile_photo = serializers.ImageField(required=False)
