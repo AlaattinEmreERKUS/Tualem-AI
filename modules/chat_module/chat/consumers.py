@@ -149,12 +149,14 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         )
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     f"{GRAPH_MODULE_URL}/api/query/",
                     json={"question": user_message, "top_k": 5, "model": model},
                     headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
                 )
+
+            logger.info("RAG query | status=%s | model=%s", response.status_code, model)
 
             if response.status_code != 200:
                 try:
@@ -162,12 +164,13 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                     err_msg = err_body.get('error', str(err_body))
                 except Exception:
                     err_msg = f'HTTP {response.status_code}'
+                logger.warning("RAG query error | status=%s | msg=%s", response.status_code, err_msg)
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         'type': 'chat_message',
                         'role': 'assistant',
-                        'message': f'⚠️ Hata: {err_msg}',
+                        'message': f'⚠️ {err_msg}',
                         'is_streaming': False,
                         'sources': {},
                     }
@@ -197,6 +200,18 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 sources={'results': sources, 'provider': provider},
             )
 
+        except httpx.TimeoutException as exc:
+            logger.error("Graph module timeout: %s", exc)
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'role': 'assistant',
+                    'message': '⚠️ İstek zaman aşımına uğradı (120s). Model yavaş yanıt veriyor olabilir.',
+                    'is_streaming': False,
+                    'sources': {},
+                }
+            )
         except httpx.RequestError as exc:
             logger.error("Graph module request error: %s: %s", type(exc).__name__, exc)
             await self.channel_layer.group_send(
@@ -204,7 +219,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'chat_message',
                     'role': 'assistant',
-                    'message': f'⚠️ Graf servisine ulaşılamıyor ({type(exc).__name__}). Lütfen daha sonra tekrar deneyin.',
+                    'message': f'⚠️ Graf servisine ulaşılamıyor ({type(exc).__name__}).',
                     'is_streaming': False,
                     'sources': {},
                 }

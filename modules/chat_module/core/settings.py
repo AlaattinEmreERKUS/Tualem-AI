@@ -60,6 +60,9 @@ CHANNEL_LAYERS = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+from shared.logging_config import make_logging_config
+LOGGING = make_logging_config('chat_module', log_level=os.getenv('LOG_LEVEL', 'INFO'))
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'chat.authentication.JWTAuthentication',
