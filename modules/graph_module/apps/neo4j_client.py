@@ -209,6 +209,18 @@ class Neo4jClient:
         except Exception:
             return []
 
+    def delete_chunks(self, chunk_ids: List[str]) -> None:
+        query = """
+        MATCH (c:Chunk)
+        WHERE c.id IN $chunk_ids
+        DETACH DELETE c
+        """
+        try:
+            with self.driver.session() as session:
+                session.run(query, {"chunk_ids": chunk_ids})
+        except Exception:
+            pass
+
     def create_relationships(self, relationships: List[Dict[str, Any]]):
         with self.driver.session() as session:
             for rel in relationships:

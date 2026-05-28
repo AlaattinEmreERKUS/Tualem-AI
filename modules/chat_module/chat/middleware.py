@@ -1,8 +1,7 @@
-import jwt
 from django.conf import settings
-from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
-from django.contrib.auth.models import AnonymousUser
+from shared.jwt_utils import decode_token, TokenExpiredError, InvalidTokenError
+
 
 class JWTAuthMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
@@ -12,12 +11,14 @@ class JWTAuthMiddleware(BaseMiddleware):
 
         if token:
             try:
-                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-                
+                payload = decode_token(token, settings.JWT_SECRET)
                 scope["user_id"] = payload.get("user_id")
-            except (jwt.ExpiredSignatureError, jwt.DecodeError):
+                scope["token"] = token
+            except (TokenExpiredError, InvalidTokenError):
                 scope["user_id"] = None
+                scope["token"] = None
         else:
             scope["user_id"] = None
+            scope["token"] = None
 
         return await super().__call__(scope, receive, send)

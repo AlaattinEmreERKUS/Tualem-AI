@@ -3,8 +3,8 @@ from .models import ChatRoom, ChatMessage
 class ChatRepository:
     
     @staticmethod
-    def get_all_rooms():
-        return ChatRoom.objects.all().order_by('-created_at')
+    def get_rooms_by_user(user_id):
+        return ChatRoom.objects.filter(user_id=user_id).order_by('-created_at')
 
     @staticmethod
     def get_room_by_id(room_id):
@@ -18,8 +18,8 @@ class ChatRepository:
         return ChatMessage.objects.filter(room_id=room_id).order_by('created_at')
 
     @staticmethod
-    def create_room(name, user):
-        return ChatRoom.objects.create(name=name, user=user)
+    def create_room(title, user_id):
+        return ChatRoom.objects.create(title=title, user_id=user_id)
 
     @staticmethod
     def create_message(room_obj, role, content, sources=None):

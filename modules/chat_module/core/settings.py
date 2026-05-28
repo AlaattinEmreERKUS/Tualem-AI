@@ -3,9 +3,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'chat-module-secret-key-safe-123'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'chat-module-secret-key-safe-123')
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+
+JWT_SECRET = os.getenv('JWT_SECRET')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -14,6 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'channels',
     'chat',
 ]
@@ -53,3 +56,12 @@ CHANNEL_LAYERS = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'chat.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}

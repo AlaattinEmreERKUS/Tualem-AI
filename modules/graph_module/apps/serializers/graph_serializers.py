@@ -42,7 +42,22 @@ LLM_PROVIDER_CHOICES = ["groq", "ollama", "openrouter"]
 class QueryRequestSerializer(serializers.Serializer):
     question = serializers.CharField(min_length=3, max_length=1000)
     top_k = serializers.IntegerField(min_value=1, max_value=20, default=5)
-    provider = serializers.ChoiceField(choices=LLM_PROVIDER_CHOICES, required=False, default="")
+    provider = serializers.ChoiceField(choices=LLM_PROVIDER_CHOICES, required=False, allow_blank=True, default="")
+
+
+class LiteratureSearchRequestSerializer(serializers.Serializer):
+    topic = serializers.CharField(min_length=3, max_length=200)
+    max_results = serializers.IntegerField(min_value=1, max_value=10, default=5)
+
+
+class LiteratureSearchResultSerializer(serializers.Serializer):
+    document_id = serializers.UUIDField()
+    task_id = serializers.UUIDField()
+    title = serializers.CharField()
+    authors = serializers.ListField(child=serializers.CharField())
+    arxiv_id = serializers.CharField()
+    summary = serializers.CharField()
+    published = serializers.CharField(allow_null=True)
 
 
 class QuerySourceSerializer(serializers.Serializer):

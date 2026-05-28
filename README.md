@@ -1,30 +1,35 @@
 # Tualem-AI
 
-Graph RAG sistemi. Kullanıcının yüklediği dokümanları Neo4j (graph) ve Pinecone (vector) veritabanlarına gömer, LangGraph pipeline'ları ile işler, OpenRouter üzerinden LLM çağrısı yapar.
+Graph RAG tabanlı doküman soru-cevap sistemi. Kullanıcının yüklediği dokümanlar PostgreSQL/pgvector ve Neo4j'de saklanır; Celery pipeline'ı ile chunk'lanıp embed edilir. Chat modülü üzerinden WebSocket bağlantısıyla gerçek zamanlı RAG sorgusu yapılabilir.
 
 ## Mimari
 
 ```
 [Client]
-   |
+    |
 [Nginx :80]
-   |          |
-[user_module  [graph_module
-   :8001]       :8002]
-   |              |
-[SQLite]    [SQLite + Neo4j + Pinecone]
-                  |
+    |           |           |
+[user_module  [graph_module  [chat_module
+   :8001]        :8002]         :8003]
+    |              |               |
+[PostgreSQL]  [PostgreSQL    [PostgreSQL
+              + pgvector     + Redis]
+              + Neo4j]
+                   |
             [Celery Worker]
-                  |
-            [Redis :6379]
+                   |
+             [Redis :6379]
 ```
 
 | Servis | Port | Görev |
 |--------|------|-------|
-| user_module | 8001 | Kayıt, giriş, JWT token |
-| graph_module | 8002 | Doküman yükleme, graph/vector embedding, RAG |
+| user_module | 8001 | Kayıt, giriş, JWT token üretimi |
+| graph_module | 8002 | Doküman yükleme, chunk/embed pipeline, Graph RAG sorgusu |
+| chat_module | 8003 | WebSocket chat, RAG entegrasyonu (Daphne/ASGI) |
 | Nginx | 80 | Reverse proxy |
-| Redis | 6379 | Celery broker |
+| PostgreSQL | 5430 | Ana veritabanı (pgvector uzantısıyla) |
+| Neo4j | 7474/7687 | Bilgi grafı |
+| Redis | 6379 | Celery broker + Django Channels layer |
 
 ---
 
@@ -32,138 +37,57 @@ Graph RAG sistemi. Kullanıcının yüklediği dokümanları Neo4j (graph) ve Pi
 
 ### 1. Gereksinimler
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) — paket yöneticisi
-- [nginx](https://nginx.org/en/download.html) — reverse proxy
-- [Redis](https://redis.io/download/) — Celery broker (Docker ile kolay)
-- Neo4j ve Pinecone hesabı (cloud veya local)
+- Docker ve Docker Compose
+- Bir LLM API anahtarı (OpenRouter, Groq veya yerel Ollama)
 
-### 2. uv Kur
+### 2. Ortam Değişkenlerini Ayarla
 
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-# Terminali yeniden aç veya:
-$env:Path = "C:\Users\$env:USERNAME\.local\bin;$env:Path"
+```bash
+cp .env.example .env
 ```
 
-### 3. Projeyi Klonla ve Bağımlılıkları Kur
+`.env` dosyasını düzenle:
 
-```powershell
-git clone <repo-url>
-cd Tualem-AI
-uv sync --all-packages --dev
+```env
+# PostgreSQL
+POSTGRES_DB=tualem_db
+POSTGRES_USER=tualem_user
+POSTGRES_PASSWORD=güçlü_şifre
+
+# Neo4j
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=neo4j_şifre
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# LLM (OpenRouter, Groq veya Ollama — en az biri gerekli)
+OPENROUTER_API_KEY=
+EXTRACTION_MODEL=openai/gpt-4o-mini
+
+# JWT — tüm servisler arasında paylaşılan secret
+JWT_SECRET=çok_gizli_ve_uzun_bir_anahtar
 ```
 
-Bu komut `.venv` oluşturur ve tüm servislerin bağımlılıklarını kurar.
+> `JWT_SECRET` tüm servislerde **aynı** olmalı — token doğrulaması bu değer üzerinden yapılır.
 
-### 4. Ortam Değişkenlerini Ayarla
+### 3. Sistemi Başlat
 
-**graph_module:**
-```powershell
-copy modules\graph_module\.env.example modules\graph_module\.env
-```
-`.env` dosyasını aç ve doldur:
-```
-NEO4J_URI=neo4j+s://<instance>.databases.neo4j.io
-NEO4J_USER=<kullanici>
-NEO4J_PASSWORD=<sifre>
-OPENROUTER_API_KEY=<anahtar>
-PINECONE_API_KEY=<anahtar>
-PINECONE_INDEX_NAME=tualem-docs
-JWT_SECRET_KEY=<gizli-anahtar>
+```bash
+docker-compose up --build
 ```
 
-**user_module:**
-```powershell
-# modules\user_module\.env dosyası oluştur:
-JWT_SECRET_KEY=<user_module ile aynı anahtar>
-```
+İlk başlatmada migration'lar otomatik çalışır.
 
-> JWT_SECRET_KEY her iki serviste **aynı** olmalı — token doğrulaması için.
+> Veritabanı şemasını sıfırlamak gerekiyorsa:
+> ```bash
+> docker-compose down -v && docker-compose up --build
+> ```
 
-### 5. Veritabanı Migration
+### 4. Celery Worker
 
-```powershell
-.venv\Scripts\python modules\user_module\manage.py migrate
-.venv\Scripts\python modules\graph_module\manage.py migrate
-```
-
-### 6. Redis Başlat
-
-```powershell
-# Docker varsa:
-docker run -d -p 6379:6379 redis:alpine
-```
-
-### 7. nginx Kur
-
-[nginx.org/en/download.html](https://nginx.org/en/download.html) adresinden Windows için indir.
-
-Tavsiye edilen kurulum yeri: `C:\nginx\`
-
-> PATH'e eklemeye gerek yok — `start.ps1` otomatik bulur.
-
-### 8. Sistemi Başlat
-
-```powershell
-.\start.ps1
-```
-
-`start.ps1` şunları başlatır:
-- user_module → http://localhost:8001
-- graph_module → http://localhost:8002
-- Nginx → http://localhost:80 (kuruluysa)
-
----
-
-## Celery Worker
-
-Doküman işleme async çalışır. Ayrı bir terminalde:
-
-```powershell
-cd modules\graph_module
-..\..\venv\Scripts\celery -A core worker --loglevel=info
-```
-
----
-
-## Testler
-
-```powershell
-# user_module
-cd modules\user_module
-pytest
-
-# graph_module
-cd modules\graph_module
-pytest
-```
-
----
-
-## Endpoint'ler
-
-### Auth (user_module — :8001)
-
-| Method | URL | Açıklama |
-|--------|-----|----------|
-| POST | `/register/` | Kayıt |
-| POST | `/login/` | Giriş |
-| POST | `/logout/` | Çıkış |
-| POST | `/api/token/` | JWT token al |
-| POST | `/api/token/refresh/` | Token yenile |
-| POST | `/api/token/verify/` | Token doğrula |
-
-### Dokümanlar (graph_module — :8002)
-
-| Method | URL | Açıklama |
-|--------|-----|----------|
-| GET/POST | `/api/documents/` | Doküman listesi / yükle |
-| GET/PUT/DELETE | `/api/documents/{id}/` | Doküman detay |
-| GET | `/api/documents/{id}/chunks/` | Chunk listesi |
-| GET | `/api/documents/{id}/chunks/{chunk_id}/` | Chunk detay |
-
-Tüm `/api/` endpointleri `Authorization: Bearer <token>` header gerektirir.
+Doküman işleme pipeline'ı Celery ile async çalışır; `docker-compose up` ile birlikte otomatik başlar (`celery_worker` servisi).
 
 ---
 
@@ -171,17 +95,105 @@ Tüm `/api/` endpointleri `Authorization: Bearer <token>` header gerektirir.
 
 ```
 Tualem-AI/
-├── pyproject.toml              # uv workspace root
-├── start.ps1                   # Tüm servisleri başlatır
+├── docker-compose.yml
+├── .env.example
 ├── nginx/
-│   └── nginx.conf              # Reverse proxy config
+│   └── nginx.conf              # Reverse proxy — 3 servis + WebSocket
+├── shared/
+│   └── jwt_utils.py            # Servisler arası paylaşılan JWT kütüphanesi
 └── modules/
     ├── user_module/            # Auth servisi (:8001)
-    │   ├── pyproject.toml
+    │   ├── Dockerfile
+    │   ├── apps/               # Kayıt, giriş, token view'ları
+    │   └── core/               # Django settings & urls
+    ├── graph_module/           # RAG servisi (:8002)
+    │   ├── Dockerfile
     │   ├── apps/
-    │   └── user_project/
-    └── graph_module/           # RAG servisi (:8002)
-        ├── pyproject.toml
-        ├── apps/
+    │   │   ├── models.py       # Document, ContentChunk, GraphTask
+    │   │   ├── tasks.py        # Celery pipeline (chunk → embed → graph)
+    │   │   ├── neo4j_client.py # Neo4j bağlantısı
+    │   │   ├── repositories/   # graph_repository, rag_repository
+    │   │   └── service/        # graph_service, graph_rag_service
+    │   └── core/
+    └── chat_module/            # Chat servisi (:8003, ASGI/Daphne)
+        ├── Dockerfile
+        ├── chat/
+        │   ├── consumers.py    # WebSocket consumer — graph_module'a RAG isteği atar
+        │   ├── middleware.py   # JWT token → scope["user_id"] / scope["token"]
+        │   ├── models.py       # ChatRoom, ChatMessage
+        │   └── views.py        # REST: oda ve mesaj yönetimi
         └── core/
 ```
+
+---
+
+## Endpoint'ler
+
+### Auth (`user_module` — :8001)
+
+| Method | URL | Açıklama |
+|--------|-----|----------|
+| POST | `/api/auth/register/` | Kullanıcı kaydı |
+| POST | `/api/auth/login/` | Giriş — `access` ve `refresh` token döner |
+| POST | `/api/auth/refresh/` | Access token yenile |
+| POST | `/api/auth/verify/` | Token doğrula |
+
+### Dokümanlar (`graph_module` — :8002)
+
+Tüm endpointler `Authorization: Bearer <token>` gerektirir.
+
+| Method | URL | Açıklama |
+|--------|-----|----------|
+| GET | `/api/documents/` | Kullanıcının doküman listesi |
+| POST | `/api/documents/` | Doküman yükle (multipart/form-data) |
+| GET | `/api/documents/{id}/` | Doküman detayı |
+| DELETE | `/api/documents/{id}/` | Dokümanı sil (Neo4j + embedding temizliği dahil) |
+| GET | `/api/documents/{id}/status/` | Celery pipeline durumu |
+| GET | `/api/documents/{id}/chunks/` | Doküman chunk listesi |
+| POST | `/api/documents/search/` | arXiv'de literatür ara, PDF'leri indir ve pipeline'a sok (`topic`, `max_results`) |
+| POST | `/api/query/` | Graph RAG sorgusu (`question`, `top_k`, `provider`) |
+
+### Chat (`chat_module` — :8003)
+
+Tüm endpointler `Authorization: Bearer <token>` gerektirir.
+
+| Method | URL | Açıklama |
+|--------|-----|----------|
+| GET | `/api/chat/rooms/` | Kullanıcının sohbet odaları |
+| POST | `/api/chat/rooms/` | Yeni oda oluştur |
+| GET | `/api/chat/rooms/{id}/` | Oda detayı |
+| DELETE | `/api/chat/rooms/{id}/` | Odayı sil |
+| GET | `/api/chat/rooms/{id}/messages/` | Oda mesaj geçmişi |
+
+### WebSocket (`chat_module` — Nginx üzerinden)
+
+```
+ws://localhost/ws/graph/chat/{room_id}/?token=<jwt_access_token>
+```
+
+Bağlandıktan sonra mesaj gönder:
+
+```json
+{ "message": "Neo4j ile ilgili belgelerimde ne var?" }
+```
+
+Sunucu sırasıyla şu event'leri döner:
+
+```json
+{ "role": "user", "message": "Neo4j ile ilgili...", "is_streaming": false }
+{ "role": "system", "message": "Grafik veritabanında araştırma yapılıyor..." }
+{ "role": "assistant", "message": "...", "is_streaming": false, "sources": [...] }
+```
+
+---
+
+## LLM Sağlayıcıları
+
+`/api/query/` isteğinde `provider` alanıyla sağlayıcı seçilebilir:
+
+| Değer | Sağlayıcı | Gereksinim |
+|-------|-----------|------------|
+| `openrouter` | OpenRouter API | `OPENROUTER_API_KEY` |
+| `groq` | Groq API | `GROQ_API_KEY` |
+| `ollama` | Yerel Ollama | Çalışan Ollama servisi |
+| *(boş)* | Otomatik (env'e göre) | `LLM_PROVIDER` env değişkeni |

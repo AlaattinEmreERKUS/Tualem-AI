@@ -71,6 +71,14 @@ class EntityExtractionException(GraphBaseException):
         super().__init__("LLM'den entity çıkarma başarısız oldu.")
 
 
+# --- Literature Search ---
+
+class LiteratureSearchException(GraphBaseException):
+    def __init__(self, detail: str = ""):
+        msg = f"Literatür araması başarısız: {detail}" if detail else "Literatür araması başarısız."
+        super().__init__(msg)
+
+
 # --- RAG ---
 
 class NoRelevantChunksException(GraphBaseException):
