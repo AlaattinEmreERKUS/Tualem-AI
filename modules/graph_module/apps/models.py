@@ -21,7 +21,7 @@ class Document(models.Model):
         default='pending'
     )
     class Meta:
-        app_label = 'chat'
+        app_label = 'apps'
 
 class ContentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -31,7 +31,7 @@ class ContentChunk(models.Model):
     embedding = VectorField(dimensions=384, null=True, blank=True)
     is_embedded = models.BooleanField(default=False)
     class Meta:
-        app_label = 'chat'
+        app_label = 'apps'
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -53,4 +53,4 @@ class GraphTask(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:
-        app_label = 'chat'
+        app_label = 'apps'

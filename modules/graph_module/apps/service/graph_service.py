@@ -1,4 +1,5 @@
 from apps.repositories.graph_repository import GraphRepository
+from apps.service.graph_rag_service import GraphRAGService
 from apps.exceptions.graph_exceptions import (
     DocumentNotFoundException,
     DocumentSaveException,
@@ -47,6 +48,8 @@ class GraphService:
         document = GraphRepository.get_document_by_id(document_id, user_id)
         if not document:
             raise DocumentAccessDeniedException()
+
+        GraphRAGService.cleanup_document(document_id)
 
         deleted = GraphRepository.delete_document(document_id, user_id)
         if not deleted:

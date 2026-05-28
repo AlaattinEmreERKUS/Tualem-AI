@@ -2,6 +2,7 @@ import os
 from langchain_core.prompts import PromptTemplate
 
 from apps.repositories.rag_repository import RAGRepository
+from apps.repositories.graph_repository import GraphRepository
 from apps.neo4j_client import _build_llm
 from apps.exceptions.graph_exceptions import (
     NoRelevantChunksException,
@@ -41,6 +42,14 @@ def _build_context(chunks: list, graph_triples: list) -> str:
 
 
 class GraphRAGService:
+
+    @staticmethod
+    def cleanup_document(document_id: str) -> None:
+        chunks = GraphRepository.get_chunks_by_document(document_id)
+        chunk_ids = [str(c['id']) for c in chunks] if chunks else []
+        if chunk_ids:
+            RAGRepository.delete_chunk_nodes(chunk_ids)
+        RAGRepository.delete_document_embeddings(document_id)
 
     @staticmethod
     def query(user_id: str, question: str, top_k: int = 5, provider: str = "") -> dict:

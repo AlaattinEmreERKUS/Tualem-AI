@@ -8,7 +8,7 @@ class ChatRoomViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        rooms = ChatRepository.get_all_rooms()
+        rooms = ChatRepository.get_rooms_by_user(user_id=request.user.id)
         serializer = ChatRoomSerializer(rooms, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -17,7 +17,7 @@ class ChatRoomViewSet(viewsets.ViewSet):
         if not name:
             return Response({"error": "Oda ismi (name) alanı zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
         
-        room = ChatRepository.create_room(name=name, user=request.user)
+        room = ChatRepository.create_room(title=name, user_id=request.user.id)
         serializer = ChatRoomSerializer(room)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -29,7 +29,10 @@ class ChatMessageViewSet(viewsets.ViewSet):
         room = ChatRepository.get_room_by_id(room_pk)
         if not room:
             return Response({"error": "İstenen sohbet odası bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
-        
+
+        if str(room.user_id) != str(request.user.id):
+            return Response({"error": "Bu odaya erişim yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
+
         messages = ChatRepository.get_messages_by_room(room_id=room_pk)
         serializer = ChatMessageSerializer(messages, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

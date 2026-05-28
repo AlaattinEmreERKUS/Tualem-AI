@@ -7,11 +7,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY modules/chat_module/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY modules/chat_module/ .
+COPY shared/ ./shared/
 
 ENV PYTHONPATH=/app
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8003"]
+EXPOSE 8003
+
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8003", "core.asgi:application"]
