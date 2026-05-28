@@ -3,16 +3,16 @@ services:
     image: pgvector/pgvector:pg16
     container_name: tualem_postgres
     environment:
-      POSTGRES_DB: tualem_db
-      POSTGRES_USER: tualem_emre
-      POSTGRES_PASSWORD: tualem_1234
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5430:5432"
+      - "127.0.0.1:5430:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tualem_emre -d tualem_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,10 +21,13 @@ services:
     image: neo4j:5
     container_name: tualem_neo4j
     environment:
-      NEO4J_AUTH: "neo4j/tualem_neo4j_password_123"
+      NEO4J_AUTH: "neo4j/neo4j_local_2024"
+      NEO4J_server_memory_heap_initial__size: "128m"
+      NEO4J_server_memory_heap_max__size: "256m"
+      NEO4J_server_memory_pagecache_size: "64m"
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
     volumes:
       - neo4j_data:/data
     healthcheck:
@@ -36,10 +39,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tualem_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "6375:6379"
+      - "127.0.0.1:6375:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -54,9 +58,9 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: tualem_db
-      POSTGRES_USER: tualem_emre
-      POSTGRES_PASSWORD: tualem_1234
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PYTHONPATH: /app:/app/modules
     ports:
       - "8001:8001"
@@ -77,20 +81,16 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: tualem_db
-      POSTGRES_USER: tualem_emre
-      POSTGRES_PASSWORD: tualem_1234
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: tualem_neo4j_password_123
-      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       PYTHONPATH: /app:/app/modules
     ports:
       - "8002:8002"
     depends_on:
       postgres:
-        condition: service_healthy
-      neo4j:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -109,10 +109,12 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: tualem_db
-      POSTGRES_USER: tualem_emre
-      POSTGRES_PASSWORD: tualem_1234
-      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       PYTHONPATH: /app:/app/modules
     ports:
       - "8003:8003"
@@ -168,23 +170,18 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: tualem_db
-      POSTGRES_USER: tualem_emre
-      POSTGRES_PASSWORD: tualem_1234
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: tualem_neo4j_password_123
-      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
     depends_on:
       postgres:
-        condition: service_healthy
-      neo4j:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
       - ./modules/graph_module:/app
-      - ./modules/chat_module:/app/modules/chat_module
       - ./shared:/app/shared
       - media_data:/app/media
 

@@ -1,4 +1,7 @@
+import logging
 from rest_framework.views import APIView
+
+logger = logging.getLogger('graph_module')
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -39,12 +42,14 @@ class DocumentListView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         file = serializer.validated_data['file']
+        room_id = request.data.get('room_id') or None
         try:
             result = GraphService.upload_document(
                 user_id=request.user.id,
                 file_name=file.name,
                 file_type=file.content_type,
                 file=file,
+                room_id=room_id,
             )
             return Response(result, status=status.HTTP_201_CREATED)
         except GraphBaseException as e:
@@ -136,11 +141,16 @@ class QueryView(APIView):
                 question=data["question"],
                 top_k=data["top_k"],
                 provider=data.get("provider", ""),
+                model=data.get("model", ""),
+                action=data.get("action", ""),
+                room_id=data.get("room_id") or None,
             )
             return Response(QueryResponseSerializer(result).data)
         except NoRelevantChunksException as e:
             return Response({"error": e.message}, status=status.HTTP_404_NOT_FOUND)
         except RAGQueryException as e:
-            return Response({"error": e.message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error("RAG query failed: %s", e.message)
+            code = status.HTTP_503_SERVICE_UNAVAILABLE if "rate limit" in e.message.lower() else status.HTTP_500_INTERNAL_SERVER_ERROR
+            return Response({"error": e.message}, status=code)
         except GraphBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)

@@ -2,6 +2,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from apps.utils.jwt_utils import verify_token
 from apps.exceptions.graph_exceptions import GraphBaseException
+from shared.token_blacklist import is_blacklisted
 
 
 class JWTUser:
@@ -23,4 +24,7 @@ class JWTAuthentication(BaseAuthentication):
             payload = verify_token(token)
         except GraphBaseException as e:
             raise AuthenticationFailed(e.message)
+        jti = payload.get('jti')
+        if jti and is_blacklisted(jti):
+            raise AuthenticationFailed('Token geçersiz kılındı.')
         return (JWTUser(payload), token)

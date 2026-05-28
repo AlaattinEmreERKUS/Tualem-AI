@@ -1,5 +1,9 @@
 import os
+import time
+import logging
 from langchain_core.prompts import PromptTemplate
+
+logger = logging.getLogger('graph_module')
 
 from apps.repositories.rag_repository import RAGRepository
 from apps.repositories.graph_repository import GraphRepository
@@ -21,6 +25,36 @@ Soru: {question}
 Yanıt:""",
 )
 
+ACTION_PROMPTS = {
+    "ozet": PromptTemplate(
+        input_variables=["context"],
+        template="""Aşağıdaki belge içeriğini kapsamlı şekilde özetle. Başlıklar ve maddeler kullan.
+
+Belge İçeriği:
+{context}
+
+Özet:""",
+    ),
+    "test": PromptTemplate(
+        input_variables=["context"],
+        template="""Aşağıdaki belge içeriğine dayanarak çoktan seçmeli 5 soru üret. Her soru için 4 şık (A, B, C, D) ve doğru cevabı belirt.
+
+Belge İçeriği:
+{context}
+
+Test:""",
+    ),
+    "yolharitasi": PromptTemplate(
+        input_variables=["context"],
+        template="""Aşağıdaki belge içeriğine dayanarak adım adım bir öğrenme yol haritası oluştur. Konuları mantıklı bir sırayla ve açıklamalarıyla listele.
+
+Belge İçeriği:
+{context}
+
+Öğrenme Yol Haritası:""",
+    ),
+}
+
 
 def _build_context(chunks: list, graph_triples: list) -> str:
     parts = ["=== Doküman Parçaları ==="]
@@ -41,6 +75,27 @@ def _build_context(chunks: list, graph_triples: list) -> str:
     return "\n\n".join(parts)
 
 
+def _call_llm(prompt_template, input_vars: dict, provider: str, model: str) -> str:
+    last_exc = None
+    for attempt in range(3):
+        try:
+            llm = _build_llm(provider, model)
+            return (prompt_template | llm).invoke(input_vars).content.strip()
+        except Exception as e:
+            err = str(e)
+            last_exc = e
+            if ("429" in err or "rate" in err.lower()) and attempt < 2:
+                wait = 2 ** attempt
+                logger.warning("Rate limit, retry %d/3, %ds bekliyor | model=%s", attempt + 1, wait, model)
+                time.sleep(wait)
+                continue
+            if "401" in err or "auth" in err.lower() or "api key" in err.lower():
+                raise RAGQueryException("API anahtarı geçersiz.") from e
+            logger.error("LLM call failed | model=%s | error=%s", model, err[:300])
+            raise RAGQueryException(f"LLM hatası: {err[:200]}") from e
+    raise RAGQueryException(f"Model rate limit aşıldı ({model or 'default'}). Farklı model seçin.") from last_exc
+
+
 class GraphRAGService:
 
     @staticmethod
@@ -52,25 +107,24 @@ class GraphRAGService:
         RAGRepository.delete_document_embeddings(document_id)
 
     @staticmethod
-    def query(user_id: str, question: str, top_k: int = 5, provider: str = "") -> dict:
-        chunks = RAGRepository.vector_search(question, user_id, top_k)
+    def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None) -> dict:
+        k = 10 if action else top_k
+        chunks = RAGRepository.vector_search(question, user_id, k, room_id=room_id)
         if not chunks:
             raise NoRelevantChunksException()
 
         chunk_ids = [str(c["id"]) for c in chunks]
         graph_triples = RAGRepository.get_graph_context(chunk_ids)
-
         context = _build_context(chunks, graph_triples)
 
-        try:
-            llm = _build_llm(provider)
-            chain = RAG_PROMPT | llm
-            response = chain.invoke({"context": context, "question": question})
-        except Exception as e:
-            raise RAGQueryException(str(e)) from e
+        # Aksiyon varsa özel prompt, yoksa normal RAG
+        if action and action in ACTION_PROMPTS:
+            answer = _call_llm(ACTION_PROMPTS[action], {"context": context}, provider, model)
+        else:
+            answer = _call_llm(RAG_PROMPT, {"context": context, "question": question}, provider, model)
 
         return {
-            "answer": response.content.strip(),
+            "answer": answer,
             "provider": provider or os.getenv("LLM_PROVIDER", "auto"),
             "sources": [
                 {

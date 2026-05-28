@@ -83,7 +83,7 @@ class LiteratureSearchException(GraphBaseException):
 
 class NoRelevantChunksException(GraphBaseException):
     def __init__(self):
-        super().__init__("Soruyla ilgili içerik bulunamadı.")
+        super().__init__("Henüz yüklenmiş kaynak yok veya soruyla eşleşen içerik bulunamadı. Önce kaynak ekleyin.")
 
 class RAGQueryException(GraphBaseException):
     def __init__(self, detail: str = ""):

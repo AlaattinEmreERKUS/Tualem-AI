@@ -1,5 +1,8 @@
 import os
+import logging
 from celery import shared_task
+
+logger = logging.getLogger('graph_module')
 from apps.repositories.graph_repository import GraphRepository
 from apps.exceptions.graph_exceptions import PipelineException, EntityExtractionException
 
@@ -28,6 +31,16 @@ def _extract_text(file_path: str, file_type: str) -> str:
         from docx import Document as DocxDocument
         doc = DocxDocument(file_path)
         return "\n".join(p.text for p in doc.paragraphs)
+
+    if file_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        from pptx import Presentation
+        prs = Presentation(file_path)
+        texts = []
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    texts.append(shape.text.strip())
+        return "\n".join(texts)
 
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()

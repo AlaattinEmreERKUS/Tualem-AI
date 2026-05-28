@@ -5,6 +5,7 @@ from pgvector.django import VectorField
 class Document(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.CharField(max_length=100)
+    room_id = models.CharField(max_length=100, null=True, blank=True, db_index=True)
     file_name = models.CharField(max_length=300)
     file_type = models.CharField(max_length=300)
     file = models.FileField(upload_to='documents/')
@@ -21,17 +22,17 @@ class Document(models.Model):
         default='pending'
     )
     class Meta:
-        app_label = 'apps'
+        app_label = 'graph'
 
 class ContentChunk(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
     chunk_index = models.IntegerField()
-    embedding = VectorField(dimensions=384, null=True, blank=True)
+    embedding = VectorField(dimensions=768, null=True, blank=True)
     is_embedded = models.BooleanField(default=False)
     class Meta:
-        app_label = 'apps'
+        app_label = 'graph'
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -53,4 +54,4 @@ class GraphTask(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:
-        app_label = 'apps'
+        app_label = 'graph'

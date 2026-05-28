@@ -14,8 +14,8 @@ def _get_neo4j_client():
 class RAGRepository:
 
     @staticmethod
-    def vector_search(query: str, user_id: str, top_k: int = 5) -> list:
-        return VectorStore().search(query, user_id, top_k)
+    def vector_search(query: str, user_id: str, top_k: int = 5, room_id: str = None) -> list:
+        return VectorStore().search(query, user_id, top_k, room_id=room_id)
 
     @staticmethod
     def get_graph_context(chunk_ids: list) -> list:

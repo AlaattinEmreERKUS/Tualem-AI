@@ -9,6 +9,7 @@ from apps.views import (
     LoginView,
     RefreshTokenView,
     TokenVerifyView,
+    LogoutView,
 )
 
 urlpatterns = [
@@ -23,5 +24,5 @@ urlpatterns = [
     path('api/auth/login/', LoginView.as_view()),
     path('api/auth/refresh/', RefreshTokenView.as_view()),
     path('api/auth/verify/', TokenVerifyView.as_view()),
-    
+    path('api/auth/logout/', LogoutView.as_view()),
 ]

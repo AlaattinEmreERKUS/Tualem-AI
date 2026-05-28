@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from neo4j import GraphDatabase
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -11,17 +12,22 @@ from apps.exceptions.graph_exceptions import (
     EntityExtractionException,
 )
 
+ALLOWED_ENTITY_TYPES = frozenset({
+    "Person", "Organization", "Location", "Concept", "Event", "Product", "Entity"
+})
+_SAFE_REL_TYPE = re.compile(r'^[A-Z][A-Z0-9_]*$')
+
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
-def _build_llm(provider: str = ""):
+def _build_llm(provider: str = "", model: str = ""):
     resolved = (provider or os.getenv("LLM_PROVIDER", "")).lower()
 
     if resolved == "groq" or (not resolved and os.getenv("GROQ_API_KEY")):
         from langchain_groq import ChatGroq
         return ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+            model=model or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
             api_key=os.getenv("GROQ_API_KEY"),
             temperature=0,
         )
@@ -29,13 +35,13 @@ def _build_llm(provider: str = ""):
     if resolved == "ollama" or (not resolved and os.getenv("OLLAMA_BASE_URL")):
         from langchain_ollama import ChatOllama
         return ChatOllama(
-            model=os.getenv("OLLAMA_MODEL", "llama3.2"),
+            model=model or os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
             temperature=0,
         )
 
     return ChatOpenAI(
-        model=os.getenv("EXTRACTION_MODEL", "openai/gpt-4o-mini"),
+        model=model or os.getenv("EXTRACTION_MODEL", "google/gemma-4-31b-it:free"),
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
         openai_api_base=OPENROUTER_BASE_URL,
         temperature=0,
@@ -125,7 +131,8 @@ class Neo4jClient:
         with self.driver.session() as session:
             for entity in entities:
                 name = entity.get("name", "")
-                entity_type = entity.get("type", "Entity")
+                raw_type = entity.get("type", "Entity")
+                entity_type = raw_type if raw_type in ALLOWED_ENTITY_TYPES else "Entity"
                 props = {k.replace(" ", "_"): v for k, v in entity.get("properties", {}).items()}
 
                 props_str = ", ".join([f"{k}: ${k}" for k in props.keys()])
@@ -154,7 +161,8 @@ class Neo4jClient:
 
             for entity in entities:
                 name = entity.get("name", "")
-                entity_type = entity.get("type", "Entity")
+                raw_type = entity.get("type", "Entity")
+                entity_type = raw_type if raw_type in ALLOWED_ENTITY_TYPES else "Entity"
                 props = {k.replace(" ", "_"): v for k, v in entity.get("properties", {}).items()}
                 props_str = ", ".join([f"{k}: ${k}" for k in props.keys()])
                 set_clause = f"SET e += {{{props_str}}}" if props_str else ""
@@ -176,7 +184,8 @@ class Neo4jClient:
             for rel in relationships:
                 source = rel.get("source", "")
                 target = rel.get("target", "")
-                rel_type = rel.get("type", "RELATED_TO").replace(" ", "_").upper()
+                raw_rel = rel.get("type", "RELATED_TO").replace(" ", "_").upper()
+                rel_type = raw_rel if _SAFE_REL_TYPE.match(raw_rel) else "RELATED_TO"
                 props = {k.replace(" ", "_"): v for k, v in rel.get("properties", {}).items()}
                 props_str = ", ".join([f"`{k}`: ${k}" for k in props.keys()])
                 props_clause = f"SET r += {{{props_str}}}" if props_str else ""
@@ -226,7 +235,8 @@ class Neo4jClient:
             for rel in relationships:
                 source = rel.get("source", "")
                 target = rel.get("target", "")
-                rel_type = rel.get("type", "RELATED_TO").replace(" ", "_").upper()
+                raw_rel = rel.get("type", "RELATED_TO").replace(" ", "_").upper()
+                rel_type = raw_rel if _SAFE_REL_TYPE.match(raw_rel) else "RELATED_TO"
                 props = {k.replace(" ", "_"): v for k, v in rel.get("properties", {}).items()}
 
                 props_str = ", ".join([f"`{k}`: ${k}" for k in props.keys()])

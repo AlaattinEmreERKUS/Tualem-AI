@@ -19,10 +19,11 @@ class GraphRepository:
             return None
 
     @staticmethod
-    def create_document(user_id, file_name, file_type, file):
+    def create_document(user_id, file_name, file_type, file, room_id=None):
         try:
             instance = Document(
                 user_id=user_id,
+                room_id=room_id,
                 file_name=file_name,
                 file_type=file_type,
                 file=file,

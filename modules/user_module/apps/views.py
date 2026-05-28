@@ -1,4 +1,7 @@
+import logging
 from django.shortcuts import render, redirect
+
+logger = logging.getLogger('user_module')
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -7,6 +10,7 @@ from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 from apps.models import CustomUser
 from apps.service.user_service import UserService
@@ -22,6 +26,10 @@ from apps.exceptions.user_exceptions import (
     TokenExpiredException,
     InvalidTokenException,
 )
+from apps.utils.token_blacklist import blacklist_token
+from apps.utils.jwt_utils import decode_token as _decode_token
+from django.conf import settings as django_settings
+import math
 
 
 # --- Template Views ---
@@ -91,6 +99,7 @@ def logout_view(request):
 
 
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -113,6 +122,7 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -133,6 +143,7 @@ class LoginView(APIView):
 
 
 class RefreshTokenView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = RefreshTokenSerializer(data=request.data)
@@ -152,11 +163,13 @@ class RefreshTokenView(APIView):
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
 class TokenVerifyView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         token = request.data.get("token")
         if not token:
             return Response({"error": "Token sağlanmadı."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             result = UserService.verify(token)
             return Response(result, status=status.HTTP_200_OK)
@@ -164,3 +177,24 @@ class TokenVerifyView(APIView):
             return Response({"valid": False, "error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
         except UserBaseException as e:
             return Response({"valid": False, "error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    def post(self, request):
+        token = request.data.get("token") or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        if not token:
+            return Response({"error": "Token sağlanmadı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from shared.jwt_utils import decode_token as _shared_decode
+            payload = _shared_decode(token, django_settings.JWT_SECRET)
+            jti = payload.get("jti")
+            exp = payload.get("exp", 0)
+            now = int(__import__("time").time())
+            ttl = max(exp - now, 0)
+            if jti and ttl > 0:
+                blacklist_token(jti, ttl)
+        except Exception:
+            pass
+
+        return Response({"detail": "Çıkış yapıldı."}, status=status.HTTP_200_OK)

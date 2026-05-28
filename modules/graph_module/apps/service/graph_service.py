@@ -28,8 +28,8 @@ class GraphService:
         return document
 
     @staticmethod
-    def upload_document(user_id, file_name, file_type, file):
-        document = GraphRepository.create_document(user_id, file_name, file_type, file)
+    def upload_document(user_id, file_name, file_type, file, room_id=None):
+        document = GraphRepository.create_document(user_id, file_name, file_type, file, room_id=room_id)
         if not document:
             raise DocumentSaveException()
 
