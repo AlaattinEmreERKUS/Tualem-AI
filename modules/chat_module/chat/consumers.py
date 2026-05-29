@@ -13,6 +13,19 @@ from .models import ChatRoom, ChatMessage
 GRAPH_MODULE_URL = "http://graph_module:8002"
 _GRAPH_HEADERS_BASE = {"Host": "localhost"}
 
+_USER_FRIENDLY_ERRORS = {
+    404: "Kaynaklarınızda bu konuyla ilgili bilgi bulunamadı.",
+    400: "Geçersiz istek. Sorunuzu kontrol edin.",
+    403: "Bu kaynağa erişim yetkiniz yok.",
+    429: "Model şu an meşgul. Lütfen bekleyin veya başka bir model seçin.",
+    503: "Model şu an meşgul. Lütfen bekleyin veya başka bir model seçin.",
+    500: "Bir hata oluştu. Lütfen tekrar deneyin.",
+}
+
+
+def _friendly_error(status_code: int, raw_msg: str) -> str:
+    return _USER_FRIENDLY_ERRORS.get(status_code, f"Beklenmeyen hata ({status_code}).")
+
 
 class ResearchChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -172,16 +185,17 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             if response.status_code != 200:
                 try:
                     err_body = response.json()
-                    err_msg = err_body.get('error', str(err_body))
+                    raw_msg = err_body.get('error', str(err_body))
                 except Exception:
-                    err_msg = f'HTTP {response.status_code}'
-                logger.warning("RAG query error | status=%s | msg=%s", response.status_code, err_msg)
+                    raw_msg = f'HTTP {response.status_code}'
+                logger.warning("RAG query error | status=%s | detail=%s", response.status_code, raw_msg)
+                user_msg = _friendly_error(response.status_code, raw_msg)
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         'type': 'chat_message',
                         'role': 'assistant',
-                        'message': f'⚠️ {err_msg}',
+                        'message': f'⚠️ {user_msg}',
                         'is_streaming': False,
                         'sources': {},
                     }
