@@ -110,7 +110,8 @@ class RegisterView(APIView):
         data = serializer.validated_data
         try:
             result = UserService.register(
-                fullname=data["fullname"],
+                first_name=data["first_name"],
+                last_name=data["last_name"],
                 username=data["username"],
                 email=data["email"],
                 password=data["password"],
@@ -197,6 +198,8 @@ class ProfileView(APIView):
         try:
             result = UserService.update_profile(
                 user_id=request.user.id,
+                first_name=data.get("first_name") or None,
+                last_name=data.get("last_name") or None,
                 username=data.get("username") or None,
                 old_password=data.get("old_password") or None,
                 new_password=data.get("new_password") or None,

@@ -34,3 +34,8 @@ class ChatRepository:
     def delete_room(room_id, user_id) -> bool:
         deleted, _ = ChatRoom.objects.filter(id=room_id, user_id=user_id).delete()
         return deleted > 0
+
+    @staticmethod
+    def update_room_title(room_id, user_id, title) -> bool:
+        updated = ChatRoom.objects.filter(id=room_id, user_id=user_id).update(title=title)
+        return updated > 0

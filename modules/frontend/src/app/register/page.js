@@ -10,7 +10,8 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,7 +94,7 @@ export default function RegisterPage() {
                   const res = await fetch('/api/auth/register/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fullname: fullName, username, email, password, confirm_password: confirmPassword }),
+                    body: JSON.stringify({ first_name: firstName, last_name: lastName, username, email, password, confirm_password: confirmPassword }),
                   });
                   const data = await res.json();
                   if (!res.ok) {
@@ -119,8 +120,16 @@ export default function RegisterPage() {
                   setLoading(false);
                 }
               }}>
-                <label>Ad Soyad</label>
-                <input type="text" placeholder="Ad ve soyadınızı girin" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div>
+                    <label>Ad</label>
+                    <input type="text" placeholder="Adınız" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label>Soyad</label>
+                    <input type="text" placeholder="Soyadınız" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                  </div>
+                </div>
                 <label>Kullanıcı Adı</label>
                 <input type="text" placeholder="Kullanıcı adınızı girin" value={username} onChange={(e) => setUsername(e.target.value)} required />
                 <label>Email</label>

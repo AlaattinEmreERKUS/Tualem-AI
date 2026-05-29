@@ -70,72 +70,78 @@ function OzetPanel({ content, onClose }) {
   );
 }
 
-// --- Test Panel ---
-function TestPanel({ data, answers, setAnswers, submitted, setSubmitted, onClose }) {
+// --- Test Modal (tam ekran overlay) ---
+function TestModal({ data, answers, setAnswers, submitted, setSubmitted, onClose }) {
   const questions = data?.questions ?? [];
-  const score = submitted
-    ? questions.reduce((acc, q, i) => acc + (answers[i] === q.answer ? 1 : 0), 0)
-    : 0;
-  const allAnswered = Object.keys(answers).length >= questions.length;
+  const score = submitted ? questions.reduce((acc, q, i) => acc + (answers[i] === q.answer ? 1 : 0), 0) : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--light-text)" }}>📝 Test</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1 }}>×</button>
-      </div>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "var(--panel-bg)", borderRadius: "20px", padding: "28px", width: "min(720px, 94vw)", maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column", gap: "16px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
 
-      {submitted && (
-        <div style={{ flexShrink: 0, background: score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", borderRadius: "10px", padding: "10px 12px" }}>
-          <div style={{ fontWeight: 700, color: score >= Math.ceil(questions.length / 2) ? "#4ade80" : "#f87171", fontSize: "0.95rem" }}>
-            {score}/{questions.length} Doğru
-          </div>
-          {score < questions.length && (
-            <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)", marginTop: "4px" }}>
-              Eksik konular: {questions.filter((q, i) => answers[i] !== q.answer).map((q) => q.question.slice(0, 35) + "…").join(" • ")}
-            </div>
-          )}
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <h3 style={{ color: "var(--light-text)", margin: 0, fontSize: "1.1rem" }}>📝 Test</h3>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
-      )}
 
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
-        {questions.map((q, qi) => {
-          const correct = submitted && answers[qi] === q.answer;
-          const wrong = submitted && answers[qi] && answers[qi] !== q.answer;
-          return (
-            <div key={qi} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "10px", border: `1px solid ${submitted ? (correct ? "rgba(74,222,128,0.3)" : wrong ? "rgba(248,113,113,0.3)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.08)"}` }}>
-              <div style={{ fontWeight: 600, fontSize: "0.78rem", color: "var(--light-text)", marginBottom: "8px" }}>
-                {qi + 1}. {q.question}
-              </div>
-              {Object.entries(q.options || {}).map(([key, val]) => {
-                const selected = answers[qi] === key;
-                const isAnswer = submitted && key === q.answer;
-                const isWrong = submitted && selected && key !== q.answer;
-                return (
-                  <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: "6px", padding: "4px 6px", borderRadius: "6px", cursor: submitted ? "default" : "pointer", fontSize: "0.74rem", color: "var(--light-text)", background: isAnswer ? "rgba(74,222,128,0.15)" : isWrong ? "rgba(248,113,113,0.15)" : "transparent", marginBottom: "2px" }}>
-                    <input type="radio" name={`q-${qi}`} value={key} checked={selected} disabled={submitted}
-                      onChange={() => !submitted && setAnswers((prev) => ({ ...prev, [qi]: key }))}
-                      style={{ marginTop: "2px", flexShrink: 0 }} />
-                    <span><strong>{key})</strong> {val}</span>
-                  </label>
-                );
-              })}
-              {submitted && q.explanation && (
-                <div style={{ marginTop: "6px", fontSize: "0.7rem", color: "rgba(255,255,255,0.5)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "6px" }}>
-                  💡 {q.explanation}
-                </div>
-              )}
+        {/* Skor */}
+        {submitted && (
+          <div style={{ flexShrink: 0, background: score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", borderRadius: "12px", padding: "14px 18px", border: `1px solid ${score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}` }}>
+            <div style={{ fontWeight: 700, color: score >= Math.ceil(questions.length / 2) ? "#4ade80" : "#f87171", fontSize: "1.1rem" }}>
+              {score}/{questions.length} Doğru — {Math.round((score / questions.length) * 100)}%
             </div>
-          );
-        })}
-      </div>
+            {score < questions.length && (
+              <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.55)", marginTop: "6px" }}>
+                Eksik konular: {questions.filter((q, i) => answers[i] !== q.answer).map((q) => q.question.slice(0, 40) + "…").join(" • ")}
+              </div>
+            )}
+          </div>
+        )}
 
-      {!submitted && (
-        <button onClick={() => setSubmitted(true)} disabled={!allAnswered}
-          style={{ flexShrink: 0, padding: "10px", borderRadius: "8px", background: allAnswered ? "rgba(124,58,237,0.7)" : "rgba(124,58,237,0.25)", color: "#fff", border: "none", cursor: allAnswered ? "pointer" : "default", fontWeight: 600, fontSize: "0.85rem" }}>
-          Sonuçları Gör
-        </button>
-      )}
+        {/* Sorular */}
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {questions.map((q, qi) => {
+            const correct = submitted && answers[qi] === q.answer;
+            const wrong = submitted && answers[qi] && answers[qi] !== q.answer;
+            return (
+              <div key={qi} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "16px", border: `1px solid ${submitted ? (correct ? "rgba(74,222,128,0.3)" : wrong ? "rgba(248,113,113,0.3)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.08)"}` }}>
+                <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--light-text)", marginBottom: "12px" }}>
+                  {qi + 1}. {q.question}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {Object.entries(q.options || {}).map(([key, val]) => {
+                    const selected = answers[qi] === key;
+                    const isAnswer = submitted && key === q.answer;
+                    const isWrong = submitted && selected && key !== q.answer;
+                    return (
+                      <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 12px", borderRadius: "8px", cursor: submitted ? "default" : "pointer", fontSize: "0.85rem", color: "var(--light-text)", background: isAnswer ? "rgba(74,222,128,0.15)" : isWrong ? "rgba(248,113,113,0.15)" : selected ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${isAnswer ? "rgba(74,222,128,0.3)" : isWrong ? "rgba(248,113,113,0.3)" : selected ? "rgba(124,58,237,0.3)" : "transparent"}`, transition: "background 0.15s" }}>
+                        <input type="radio" name={`q-${qi}`} value={key} checked={selected} disabled={submitted}
+                          onChange={() => !submitted && setAnswers((prev) => ({ ...prev, [qi]: key }))}
+                          style={{ marginTop: "2px", flexShrink: 0, accentColor: "#7c3aed" }} />
+                        <span><strong>{key})</strong> {val}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {submitted && q.explanation && (
+                  <div style={{ marginTop: "10px", fontSize: "0.78rem", color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "10px" }}>
+                    💡 {q.explanation}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Alt buton */}
+        {!submitted && (
+          <button onClick={() => setSubmitted(true)}
+            style={{ flexShrink: 0, padding: "13px", borderRadius: "10px", background: "rgba(124,58,237,0.8)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.02em" }}>
+            Sonuçları Gör
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,6 +276,22 @@ export default function DashboardPage() {
   // Profil
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [profileUsername, setProfileUsername] = useState("");
+  const [profileFirstName, setProfileFirstName] = useState("");
+
+  // Kart 3 nokta menüsü + düzenleme
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [favoritedRooms, setFavoritedRooms] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("tualem_favorites") || "[]")); }
+    catch { return new Set(); }
+  });
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  // Test modal
+  const [testModal, setTestModal] = useState(null); // { data, loading }
+
+  // Kaydedilen aksiyonlar (roomId → array)
+  const [savedActionsMap, setSavedActionsMap] = useState({});
 
   // Model seçici
   const [selectedModel, setSelectedModel] = useState("groq:llama-3.1-8b-instant");
@@ -333,8 +355,59 @@ export default function DashboardPage() {
       if (res.ok) {
         const d = await res.json();
         setProfileUsername(d.username || "");
+        setProfileFirstName(d.first_name || "");
         if (d.profile_photo) setProfilePhoto(d.profile_photo);
       }
+    } catch {}
+  }
+
+  function toggleFavorite(roomId) {
+    setFavoritedRooms((prev) => {
+      const next = new Set(prev);
+      next.has(roomId) ? next.delete(roomId) : next.add(roomId);
+      try { localStorage.setItem("tualem_favorites", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }
+
+  function openEditRoom(room) {
+    setEditingRoom(room);
+    setEditingTitle(room.title);
+    setOpenMenuId(null);
+  }
+
+  async function saveRoomEdit() {
+    if (!editingRoom || !editingTitle.trim()) return;
+    try {
+      const res = await fetch(`/api/chat/rooms/${editingRoom.id}/`, {
+        method: "PATCH",
+        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ title: editingTitle.trim() }),
+      });
+      if (res.ok) {
+        setRooms((prev) => prev.map((r) => r.id === editingRoom.id ? { ...r, title: editingTitle.trim() } : r));
+        if (activeRoom?.id === editingRoom.id) setActiveRoom((r) => ({ ...r, title: editingTitle.trim() }));
+      }
+    } catch {}
+    setEditingRoom(null);
+  }
+
+  function loadSavedActions(roomId) {
+    try {
+      const raw = localStorage.getItem(`tualem_actions_${roomId}`);
+      if (raw) setSavedActionsMap((prev) => ({ ...prev, [roomId]: JSON.parse(raw) }));
+    } catch {}
+  }
+
+  function saveActionToStorage(roomId, type, data) {
+    try {
+      const key = `tualem_actions_${roomId}`;
+      const existing = JSON.parse(localStorage.getItem(key) || "[]");
+      const label = { test: "📝 Test", ozet: "📋 Özet", yolharitasi: "🗺️ Yol Haritası" }[type] || type;
+      const entry = { type, data, label, timestamp: Date.now() };
+      const updated = [entry, ...existing].slice(0, 10);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setSavedActionsMap((prev) => ({ ...prev, [roomId]: updated }));
     } catch {}
   }
 
@@ -382,6 +455,13 @@ export default function DashboardPage() {
     setActiveRoom(room);
     setShowHome(false);
     setMessages([{ sender: "ai", text: "Merhaba! Soru sorabilir veya kaynak ekleyebilirsiniz." }]);
+    setActionPanel(null);
+    setTestModal(null);
+    setRoadmapData(null);
+    setTestAnswers({});
+    setTestSubmitted(false);
+    setOpenMenuId(null);
+    loadSavedActions(room.id);
     const ws = new WebSocket(`${WS_BASE}/ws/graph/chat/${room.id}/`);
     ws.onopen = () => ws.send(JSON.stringify({ type: "auth", token: getToken() }));
     ws.onmessage = (e) => {
@@ -436,21 +516,29 @@ export default function DashboardPage() {
   }
 
   function handleActionResponse(actionType, rawContent) {
+    const roomId = activeRoom?.id;
     if (actionType === "yolharitasi") {
       setActionPanel(null);
-      try { setRoadmapData(JSON.parse(rawContent)); }
-      catch { setActionPanel({ type: "ozet", data: rawContent, loading: false }); }
+      try {
+        const parsed = JSON.parse(rawContent);
+        setRoadmapData(parsed);
+        if (roomId) saveActionToStorage(roomId, "yolharitasi", parsed);
+      } catch { setActionPanel({ type: "ozet", data: rawContent, loading: false }); }
     } else if (actionType === "test") {
       try {
         const parsed = JSON.parse(rawContent);
         setTestAnswers({});
         setTestSubmitted(false);
-        setActionPanel({ type: "test", data: parsed, loading: false });
+        setTestModal({ data: parsed, loading: false });
+        setActionPanel(null);
+        if (roomId) saveActionToStorage(roomId, "test", parsed);
       } catch {
         setActionPanel({ type: "ozet", data: rawContent, loading: false });
+        setTestModal(null);
       }
     } else if (actionType === "ozet") {
       setActionPanel({ type: "ozet", data: rawContent, loading: false });
+      if (roomId) saveActionToStorage(roomId, "ozet", rawContent);
     }
   }
 
@@ -461,7 +549,12 @@ export default function DashboardPage() {
       ozet: "belge ana konular özet",
       yolharitasi: "konular sıra öğrenme",
     };
-    setActionPanel({ type: actionType, data: null, loading: true });
+    if (actionType === "test") {
+      setTestModal({ data: null, loading: true });
+      setActionPanel(null);
+    } else {
+      setActionPanel({ type: actionType, data: null, loading: true });
+    }
     const { provider, model } = parseModel(selectedModel);
     wsRef.current.send(JSON.stringify({
       type: "message", message: queryMap[actionType], model, provider, action: actionType,
@@ -643,22 +736,32 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* --- HOME: Oda Grid Görünümü --- */}
+      {/* --- HOME --- */}
       {showHome && !isWorkspaceActive && !showRoomSetup && !showModal && !showWebSearch && (
-        <div style={{ paddingTop: "80px", minHeight: "100vh" }}>
-          <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "2rem" }}>
+        <div style={{ paddingTop: "80px", minHeight: "100vh" }} onClick={() => setOpenMenuId(null)}>
+          <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2.5rem 2rem" }}>
+
+            {/* Hoş geldin */}
+            <div style={{ marginBottom: "2.5rem" }}>
+              <h1 style={{ color: "var(--light-text)", margin: "0 0 0.3rem", fontSize: "1.8rem", fontWeight: 800 }}>
+                Merhaba, {profileFirstName || profileUsername} 👋
+              </h1>
+              <p style={{ color: "var(--light-muted)", margin: 0, fontSize: "0.95rem" }}>
+                Araştırma seanslarına devam et veya yeni bir tane başlat.
+              </p>
+            </div>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h2 style={{ color: "var(--light-text)", margin: 0 }}>Not Defterlerim</h2>
-              <button
-                onClick={openRoomSetup}
-                style={{ padding: "8px 18px", borderRadius: "8px", background: "rgba(124,58,237,0.7)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}
-              >
+              <h2 style={{ color: "var(--light-text)", margin: 0, fontSize: "1.1rem", fontWeight: 700, opacity: 0.8 }}>
+                Not Defterlerim {rooms.length > 0 && <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>({rooms.length})</span>}
+              </h2>
+              <button onClick={openRoomSetup} style={{ padding: "9px 20px", borderRadius: "8px", background: "rgba(124,58,237,0.8)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
                 + Yeni Not Defteri
               </button>
             </div>
 
             {rooms.length === 0 ? (
-              <div style={{ textAlign: "center", paddingTop: "4rem" }}>
+              <div style={{ textAlign: "center", paddingTop: "5rem" }}>
                 <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📓</div>
                 <p style={{ color: "var(--light-muted)", fontSize: "1.1rem" }}>Henüz not defteri yok.</p>
                 <button onClick={openRoomSetup} style={{ marginTop: "1rem", padding: "10px 24px", borderRadius: "8px", background: "rgba(124,58,237,0.7)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}>
@@ -666,28 +769,56 @@ export default function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1rem" }}>
-                {rooms.map((room) => (
-                  <div
-                    key={room.id}
-                    onClick={() => openRoom(room)}
-                    style={{ background: "var(--panel-bg)", borderRadius: "12px", padding: "1.5rem", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "border-color 0.15s, transform 0.15s", position: "relative" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(0)"; }}
-                  >
-                    <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💬</div>
-                    <h3 style={{ color: "var(--light-text)", margin: "0 0 0.4rem", fontSize: "1rem", fontWeight: 700 }}>{room.title}</h3>
-                    <p style={{ color: "var(--light-muted)", fontSize: "0.78rem", margin: 0 }}>
-                      {new Date(room.created_at).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" })}
-                    </p>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
-                      style={{ position: "absolute", top: "12px", right: "12px", background: "rgba(255,0,0,0.15)", border: "none", borderRadius: "6px", color: "var(--light-muted)", cursor: "pointer", padding: "4px 8px", fontSize: "0.75rem" }}
-                    >
-                      Sil
-                    </button>
-                  </div>
-                ))}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1.25rem" }}>
+                {[...rooms].sort((a, b) => (favoritedRooms.has(b.id) ? 1 : 0) - (favoritedRooms.has(a.id) ? 1 : 0)).map((room) => {
+                  const isFav = favoritedRooms.has(room.id);
+                  const menuOpen = openMenuId === room.id;
+                  return (
+                    <div key={room.id} style={{ position: "relative" }}>
+                      <div
+                        onClick={() => openRoom(room)}
+                        style={{ background: "var(--panel-bg)", borderRadius: "16px", padding: "2rem 1.75rem 1.5rem", border: `1px solid ${isFav ? "rgba(251,191,36,0.4)" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "border-color 0.15s, transform 0.15s, box-shadow 0.15s", minHeight: "180px", display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: isFav ? "0 0 0 1px rgba(251,191,36,0.2)" : "none" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = isFav ? "rgba(251,191,36,0.7)" : "#7c3aed"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = isFav ? "rgba(251,191,36,0.4)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = isFav ? "0 0 0 1px rgba(251,191,36,0.2)" : "none"; }}
+                      >
+                        <div>
+                          <div style={{ fontSize: "2.2rem", marginBottom: "1rem" }}>{isFav ? "⭐" : "📓"}</div>
+                          <h3 style={{ color: "var(--light-text)", margin: "0 0 0.5rem", fontSize: "1.05rem", fontWeight: 700, paddingRight: "2rem" }}>{room.title}</h3>
+                          <p style={{ color: "var(--light-muted)", fontSize: "0.78rem", margin: 0 }}>
+                            {new Date(room.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3 nokta butonu */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(menuOpen ? null : room.id); }}
+                        style={{ position: "absolute", top: "12px", right: "12px", background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "6px", color: "var(--light-text)", cursor: "pointer", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", zIndex: 2 }}
+                      >⋮</button>
+
+                      {/* Dropdown menü */}
+                      {menuOpen && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ position: "absolute", top: "42px", right: "8px", background: "#1e1e2e", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "10px", padding: "6px", zIndex: 10, minWidth: "160px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+                        >
+                          {[
+                            { icon: isFav ? "⭐" : "☆", label: isFav ? "Favoriden Kaldır" : "Favorilere Ekle", action: () => { toggleFavorite(room.id); setOpenMenuId(null); } },
+                            { icon: "✏️", label: "Düzenle", action: () => openEditRoom(room) },
+                            { icon: "🗑️", label: "Sil", action: () => { deleteRoom(room.id); setOpenMenuId(null); }, danger: true },
+                          ].map((item) => (
+                            <button key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "9px 12px", background: "none", border: "none", borderRadius: "7px", color: item.danger ? "#f87171" : "rgba(255,255,255,0.85)", cursor: "pointer", fontSize: "0.82rem", textAlign: "left" }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                            >
+                              <span>{item.icon}</span>{item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -756,8 +887,48 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Test Modal */}
+      {testModal && !testModal.loading && (
+        <TestModal
+          data={testModal.data}
+          answers={testAnswers}
+          setAnswers={setTestAnswers}
+          submitted={testSubmitted}
+          setSubmitted={setTestSubmitted}
+          onClose={() => { setTestModal(null); setTestAnswers({}); setTestSubmitted(false); }}
+        />
+      )}
+      {testModal?.loading && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "16px" }}>
+          <div className="typing-dots"><span /><span /><span /></div>
+          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.9rem" }}>Test oluşturuluyor…</span>
+        </div>
+      )}
+
       {/* Yol Haritası Modal */}
       {roadmapData && <RoadmapModal data={roadmapData} onClose={() => setRoadmapData(null)} />}
+
+      {/* Oda Düzenleme Modal */}
+      {editingRoom && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--panel-bg)", borderRadius: "16px", padding: "24px", width: "min(420px, 90vw)", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
+            <h3 style={{ color: "var(--light-text)", margin: "0 0 16px", fontSize: "1rem" }}>✏️ Not Defterini Düzenle</h3>
+            <input
+              type="text"
+              className="chat-input"
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveRoomEdit()}
+              style={{ width: "100%", marginBottom: "14px" }}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button onClick={() => setEditingRoom(null)} style={{ padding: "8px 16px", borderRadius: "8px", background: "rgba(255,255,255,0.08)", border: "none", color: "var(--light-text)", cursor: "pointer" }}>İptal</button>
+              <button onClick={saveRoomEdit} style={{ padding: "8px 20px", borderRadius: "8px", background: "rgba(124,58,237,0.8)", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600 }}>Kaydet</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ana workspace */}
       {isWorkspaceActive && (
@@ -823,36 +994,54 @@ export default function DashboardPage() {
           </section>
 
           {/* Sağ panel */}
-          <aside className="tool-panel">
-            {actionPanel ? (
+          <aside className="tool-panel" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {actionPanel?.type === "ozet" ? (
               actionPanel.loading ? (
-                <div style={{ display: "flex", flexDirection: "column", height: "100%", alignItems: "center", justifyContent: "center", gap: "14px" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
                   <div className="typing-dots"><span /><span /><span /></div>
-                  <span style={{ fontSize: "0.8rem", color: "var(--light-muted)" }}>
-                    {actionPanel.type === "test" ? "Test oluşturuluyor…" : actionPanel.type === "ozet" ? "Özet çıkarılıyor…" : "Yol haritası hazırlanıyor…"}
-                  </span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--light-muted)" }}>Özet çıkarılıyor…</span>
                 </div>
-              ) : actionPanel.type === "ozet" ? (
+              ) : (
                 <OzetPanel content={actionPanel.data} onClose={() => setActionPanel(null)} />
-              ) : actionPanel.type === "test" ? (
-                <TestPanel
-                  data={actionPanel.data}
-                  answers={testAnswers}
-                  setAnswers={setTestAnswers}
-                  submitted={testSubmitted}
-                  setSubmitted={setTestSubmitted}
-                  onClose={() => { setActionPanel(null); setTestAnswers({}); setTestSubmitted(false); }}
-                />
-              ) : null
+              )
+            ) : actionPanel?.type === "yolharitasi" && actionPanel.loading ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+                <div className="typing-dots"><span /><span /><span /></div>
+                <span style={{ fontSize: "0.8rem", color: "var(--light-muted)" }}>Yol haritası hazırlanıyor…</span>
+              </div>
             ) : (
-              <>
-                <h4>İşlemler</h4>
-                <div className="action-buttons">
+              <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "0" }}>
+                <h4 style={{ margin: "0 0 12px", flexShrink: 0 }}>İşlemler</h4>
+                <div className="action-buttons" style={{ flexShrink: 0 }}>
                   <button className="action-btn" onClick={() => handleTestAction("test")}>📝 Test Oluştur</button>
                   <button className="action-btn" onClick={() => handleTestAction("ozet")}>📋 Özet Çıkar</button>
                   <button className="action-btn" onClick={() => handleTestAction("yolharitasi")}>🗺️ Yol Haritası</button>
                 </div>
-              </>
+
+                {/* Kaydedilen aksiyonlar */}
+                {activeRoom && (savedActionsMap[activeRoom.id] || []).length > 0 && (
+                  <div style={{ marginTop: "16px", flex: 1, overflowY: "auto" }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--light-muted)", marginBottom: "8px", fontWeight: 600, opacity: 0.7 }}>GEÇMİŞ</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {(savedActionsMap[activeRoom.id] || []).map((item, i) => (
+                        <button key={i} onClick={() => {
+                          if (item.type === "test") { setTestAnswers({}); setTestSubmitted(false); setTestModal({ data: item.data, loading: false }); }
+                          else if (item.type === "yolharitasi") setRoadmapData(item.data);
+                          else setActionPanel({ type: "ozet", data: item.data, loading: false });
+                        }} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", fontSize: "0.75rem", textAlign: "left" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+                        >
+                          <span>{item.label}</span>
+                          <span style={{ marginLeft: "auto", opacity: 0.4, fontSize: "0.68rem" }}>
+                            {new Date(item.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </aside>
         </div>

@@ -57,14 +57,16 @@ class UserRepository:
             return False
 
     @staticmethod
-    def create(fullname: str, username: str, email: str, password: str):
+    def create(first_name: str, last_name: str, username: str, email: str, password: str):
         try:
             user = CustomUser.objects.create_user(
                 username=username,
                 email=email,
                 password=password,
+                first_name=first_name,
+                last_name=last_name,
             )
-            user.fullname = fullname
+            user.fullname = f"{first_name} {last_name}".strip()
             user.save()
             return user
         except Exception:

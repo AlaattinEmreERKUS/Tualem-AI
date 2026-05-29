@@ -5,7 +5,8 @@ from apps.models import CustomUser
 
 
 class RegisterSerializer(serializers.Serializer):
-    fullname = serializers.CharField(max_length=255)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -45,6 +46,8 @@ class UserResponseSerializer(serializers.ModelSerializer):
 
 
 class ProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     username = serializers.CharField(min_length=3, max_length=150, required=False)
     old_password = serializers.CharField(required=False, allow_blank=True, default="")
     new_password = serializers.CharField(min_length=6, required=False, allow_blank=True, default="")

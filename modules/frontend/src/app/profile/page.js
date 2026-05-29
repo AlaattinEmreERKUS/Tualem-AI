@@ -9,11 +9,14 @@ export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
 
-  const [profile, setProfile] = useState({ username: "", email: "", fullname: "", profile_photo: null });
+  const [profile, setProfile] = useState({ username: "", email: "", first_name: "", last_name: "", fullname: "", profile_photo: null });
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [lastNameInput, setLastNameInput] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
+  const [nameMsg, setNameMsg] = useState(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,6 +37,8 @@ export default function ProfilePage() {
       if (res.ok) {
         const d = await res.json();
         setProfile(d);
+        setFirstNameInput(d.first_name || "");
+        setLastNameInput(d.last_name || "");
         setUsernameInput(d.username || "");
         setAvatarPreview(d.profile_photo || null);
       }
@@ -64,6 +69,25 @@ export default function ProfilePage() {
       if (ok) setPhotoMsg({ ok: true, text: "Fotoğraf güncellendi." });
       else setPhotoMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
     } catch { setPhotoMsg({ ok: false, text: "Bağlantı hatası." }); }
+    setSaving(false);
+  }
+
+  async function saveName() {
+    setSaving(true);
+    setNameMsg(null);
+    const formData = new FormData();
+    formData.append("first_name", firstNameInput.trim());
+    formData.append("last_name", lastNameInput.trim());
+    try {
+      const { ok, status, data } = await patchProfile(formData);
+      if (ok) {
+        setNameMsg({ ok: true, text: "Ad/soyad güncellendi." });
+        const full = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim();
+        setProfile((p) => ({ ...p, first_name: firstNameInput.trim(), last_name: lastNameInput.trim(), fullname: full }));
+      } else {
+        setNameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
+      }
+    } catch { setNameMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
@@ -148,6 +172,19 @@ export default function ProfilePage() {
         <p style={{ color: "var(--light-text)", fontWeight: 700, fontSize: "1.1rem", marginTop: "0.75rem", marginBottom: 0 }}>{profile.fullname || profile.username}</p>
         <p style={{ color: "var(--light-muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>{profile.email}</p>
         {photoMsg && <p style={{ color: photoMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", marginTop: "0.5rem" }}>{photoMsg.text}</p>}
+      </div>
+
+      {/* Ad / Soyad */}
+      <div style={{ background: "var(--panel-bg)", borderRadius: "12px", padding: "1.5rem", marginBottom: "1rem" }}>
+        <h4 style={{ color: "var(--light-text)", margin: "0 0 1rem" }}>Ad ve Soyad</h4>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "0.75rem" }}>
+          <input type="text" className="chat-input" placeholder="Ad" value={firstNameInput} onChange={(e) => setFirstNameInput(e.target.value)} />
+          <input type="text" className="chat-input" placeholder="Soyad" value={lastNameInput} onChange={(e) => setLastNameInput(e.target.value)} />
+        </div>
+        {nameMsg && <p style={{ color: nameMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", margin: "0 0 0.5rem" }}>{nameMsg.text}</p>}
+        <button onClick={saveName} disabled={saving} style={{ background: "rgba(124,58,237,0.7)", border: "none", borderRadius: "8px", color: "#fff", cursor: "pointer", padding: "8px 20px", fontWeight: 600 }}>
+          Kaydet
+        </button>
       </div>
 
       {/* Kullanıcı adı */}

@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from apps.repositories.user_repository import UserRepository
 from apps.utils.jwt_utils import generate_token_pair, generate_access_token, decode_token
 from apps.exceptions.user_exceptions import (
@@ -14,6 +15,8 @@ def _serialize_user(user) -> dict:
         "id": str(user.id),
         "username": user.username,
         "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
         "fullname": user.fullname,
     }
 
@@ -21,14 +24,14 @@ def _serialize_user(user) -> dict:
 class UserService:
 
     @staticmethod
-    def register(fullname: str, username: str, email: str, password: str) -> dict:
+    def register(first_name: str, last_name: str, username: str, email: str, password: str) -> dict:
         if UserRepository.exists_by_username(username):
             raise UserAlreadyExistsException("kullanıcı adı")
 
         if UserRepository.exists_by_email(email):
             raise UserAlreadyExistsException("e-posta")
 
-        user = UserRepository.create(fullname, username, email, password)
+        user = UserRepository.create(first_name, last_name, username, email, password)
         if not user:
             raise InvalidCredentialsException()
 
@@ -40,6 +43,7 @@ class UserService:
         if not user:
             raise InvalidCredentialsException()
 
+        update_last_login(None, user)
         return {"user": _serialize_user(user), **generate_token_pair(user)}
 
     @staticmethod
@@ -70,12 +74,14 @@ class UserService:
             "id": user.id,
             "username": user.username,
             "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
             "fullname": user.fullname,
             "profile_photo": photo_url,
         }
 
     @staticmethod
-    def update_profile(user_id, username=None, old_password=None, new_password=None, profile_photo=None) -> dict:
+    def update_profile(user_id, first_name=None, last_name=None, username=None, old_password=None, new_password=None, profile_photo=None) -> dict:
         user = UserRepository.get_by_id(user_id)
         if not user:
             raise InvalidCredentialsException()
@@ -84,6 +90,13 @@ class UserService:
             if UserRepository.username_taken(username, exclude_id=user.id):
                 raise UserAlreadyExistsException("kullanıcı adı")
             user.username = username
+
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+        if first_name is not None or last_name is not None:
+            user.fullname = f"{user.first_name} {user.last_name}".strip()
 
         if old_password and new_password:
             if not user.check_password(old_password):
