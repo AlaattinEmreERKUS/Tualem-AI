@@ -101,6 +101,7 @@ services:
       - ./modules/graph_module:/app
       - ./shared:/app/shared
       - media_data:/app/media
+      - hf_cache:/root/.cache/huggingface
 
   chat_module:
     build:
@@ -190,9 +191,11 @@ services:
       - ./modules/graph_module:/app
       - ./shared:/app/shared
       - media_data:/app/media
+      - hf_cache:/root/.cache/huggingface
 
 volumes:
   postgres_data:
   neo4j_data:
   media_data:
   user_media_data:
+  hf_cache:

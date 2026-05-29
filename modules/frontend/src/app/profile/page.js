@@ -48,17 +48,22 @@ export default function ProfilePage() {
     uploadPhoto(file);
   }
 
+  async function patchProfile(formData) {
+    const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
+    const d = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data: d };
+  }
+
   async function uploadPhoto(file) {
     setSaving(true);
     setPhotoMsg(null);
     const formData = new FormData();
     formData.append("profile_photo", file);
     try {
-      const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
-      const d = await res.json();
-      if (res.ok) setPhotoMsg({ ok: true, text: "Fotoğraf güncellendi." });
-      else setPhotoMsg({ ok: false, text: d.error || "Hata." });
-    } catch { setPhotoMsg({ ok: false, text: "Sunucu hatası." }); }
+      const { ok, status, data } = await patchProfile(formData);
+      if (ok) setPhotoMsg({ ok: true, text: "Fotoğraf güncellendi." });
+      else setPhotoMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
+    } catch { setPhotoMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
@@ -66,18 +71,17 @@ export default function ProfilePage() {
     if (!usernameInput.trim()) return;
     setSaving(true);
     setUsernameMsg(null);
+    const formData = new FormData();
+    formData.append("username", usernameInput.trim());
     try {
-      const formData = new FormData();
-      formData.append("username", usernameInput.trim());
-      const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
-      const d = await res.json();
-      if (res.ok) {
+      const { ok, status, data } = await patchProfile(formData);
+      if (ok) {
         setUsernameMsg({ ok: true, text: "Kullanıcı adı güncellendi." });
         setProfile((p) => ({ ...p, username: usernameInput.trim() }));
       } else {
-        setUsernameMsg({ ok: false, text: d.error || "Hata." });
+        setUsernameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
       }
-    } catch { setUsernameMsg({ ok: false, text: "Sunucu hatası." }); }
+    } catch { setUsernameMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
@@ -86,19 +90,18 @@ export default function ProfilePage() {
     if (newPassword !== confirmPassword) { setPasswordMsg({ ok: false, text: "Yeni şifreler eşleşmiyor." }); return; }
     setSaving(true);
     setPasswordMsg(null);
+    const formData = new FormData();
+    formData.append("old_password", oldPassword);
+    formData.append("new_password", newPassword);
     try {
-      const formData = new FormData();
-      formData.append("old_password", oldPassword);
-      formData.append("new_password", newPassword);
-      const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
-      const d = await res.json();
-      if (res.ok) {
+      const { ok, status, data } = await patchProfile(formData);
+      if (ok) {
         setPasswordMsg({ ok: true, text: "Şifre güncellendi." });
         setOldPassword(""); setNewPassword(""); setConfirmPassword("");
       } else {
-        setPasswordMsg({ ok: false, text: d.error || "Hata." });
+        setPasswordMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
       }
-    } catch { setPasswordMsg({ ok: false, text: "Sunucu hatası." }); }
+    } catch { setPasswordMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
