@@ -75,12 +75,34 @@ def _build_context(chunks: list, graph_triples: list) -> str:
     return "\n\n".join(parts)
 
 
+_PAYLOAD_TOO_LARGE_PATTERNS = [
+    "413", "payload too large", "context_length_exceeded",
+    "maximum context length", "too many tokens", "request too large",
+    "reduce the length", "token limit",
+]
+
+
+def _is_payload_too_large(err: str) -> bool:
+    err_lower = err.lower()
+    return any(p in err_lower for p in _PAYLOAD_TOO_LARGE_PATTERNS)
+
+
+def _truncate_context(input_vars: dict, ratio: float) -> dict:
+    result = dict(input_vars)
+    if "context" in result and isinstance(result["context"], str):
+        ctx = result["context"]
+        cutoff = max(500, int(len(ctx) * ratio))
+        result["context"] = ctx[:cutoff] + "\n\n[Bağlam token limiti nedeniyle kısaltıldı]"
+    return result
+
+
 def _call_llm(prompt_template, input_vars: dict, provider: str, model: str) -> str:
     last_exc = None
+    current_vars = input_vars
     for attempt in range(3):
         try:
             llm = _build_llm(provider, model)
-            return (prompt_template | llm).invoke(input_vars).content.strip()
+            return (prompt_template | llm).invoke(current_vars).content.strip()
         except Exception as e:
             err = str(e)
             last_exc = e
@@ -89,11 +111,21 @@ def _call_llm(prompt_template, input_vars: dict, provider: str, model: str) -> s
                 logger.warning("Rate limit, retry %d/3, %ds bekliyor | model=%s", attempt + 1, wait, model)
                 time.sleep(wait)
                 continue
+            if _is_payload_too_large(err) and attempt < 2:
+                ratio = 0.6 if attempt == 0 else 0.3
+                current_vars = _truncate_context(input_vars, ratio)
+                logger.warning(
+                    "Payload too large, retry %d/3, bağlam %.0f%%'e kısaltıldı | model=%s",
+                    attempt + 1, ratio * 100, model,
+                )
+                continue
             if "401" in err or "auth" in err.lower() or "api key" in err.lower():
                 raise RAGQueryException("API anahtarı geçersiz.") from e
             logger.error("LLM call failed | model=%s | error=%s", model, err[:300])
             raise RAGQueryException(f"LLM hatası: {err[:200]}") from e
-    raise RAGQueryException(f"Model rate limit aşıldı ({model or 'default'}). Farklı model seçin.") from last_exc
+    raise RAGQueryException(
+        f"Model rate limit aşıldı veya bağlam çok büyük ({model or 'default'}). Daha büyük context'li model seçin."
+    ) from last_exc
 
 
 class GraphRAGService:

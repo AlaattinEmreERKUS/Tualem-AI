@@ -72,14 +72,14 @@ function SourceBadges({ sources }) {
 }
 
 const MODELS = [
-  { id: "groq:llama-3.1-8b-instant",      label: "⚡ Llama 3.1 8B (Groq)" },
-  { id: "groq:llama-3.3-70b-versatile",   label: "⚡ Llama 3.3 70B (Groq)" },
-  { id: "groq:gemma2-9b-it",              label: "⚡ Gemma2 9B (Groq)" },
-  { id: "ollama:qwen3.5:9b",              label: "🖥️ Qwen3.5 9B (Yerel)" },
-  { id: "ollama:llama3.2:3b",             label: "🖥️ Llama 3.2 3B (Yerel)" },
-  { id: "moonshotai/kimi-k2.6:free",      label: "☁️ Kimi K2.6 (OpenRouter)" },
-  { id: "google/gemma-4-31b-it:free",     label: "☁️ Gemma 4 31B (OpenRouter)" },
-  { id: "meta-llama/llama-4-scout:free",  label: "☁️ Llama 4 Scout (OpenRouter)" },
+  { id: "groq:llama-3.1-8b-instant",      label: "⚡ Llama 3.1 8B",     note: "8K ctx · hızlı · küçük belgeler",    provider: "Groq" },
+  { id: "groq:llama-3.3-70b-versatile",   label: "⚡ Llama 3.3 70B",    note: "32K ctx · güçlü · büyük belgeler",   provider: "Groq" },
+  { id: "groq:gemma2-9b-it",              label: "⚡ Gemma2 9B",         note: "8K ctx · hızlı · küçük belgeler",    provider: "Groq" },
+  { id: "ollama:qwen3.5:9b",              label: "🖥️ Qwen3.5 9B",       note: "Yerel · orta kapasite",              provider: "Yerel" },
+  { id: "ollama:llama3.2:3b",             label: "🖥️ Llama 3.2 3B",     note: "Yerel · çok hızlı · basit sorular",  provider: "Yerel" },
+  { id: "moonshotai/kimi-k2.6:free",      label: "☁️ Kimi K2.6",        note: "128K ctx · ücretsiz · büyük belgeler", provider: "OpenRouter" },
+  { id: "google/gemma-4-31b-it:free",     label: "☁️ Gemma 4 31B",      note: "128K ctx · ücretsiz · güçlü",        provider: "OpenRouter" },
+  { id: "meta-llama/llama-4-scout:free",  label: "☁️ Llama 4 Scout",    note: "10M ctx · ücretsiz · devasa belgeler", provider: "OpenRouter" },
 ];
 
 export default function DashboardPage() {
@@ -394,13 +394,19 @@ export default function DashboardPage() {
         </span>
 
         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(124,58,237,0.2)", color: "var(--light-text)", fontSize: "0.8rem", cursor: "pointer" }}
-          >
-            {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(124,58,237,0.2)", color: "var(--light-text)", fontSize: "0.8rem", cursor: "pointer" }}
+            >
+              {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} ({m.provider})</option>)}
+            </select>
+            {(() => {
+              const m = MODELS.find((x) => x.id === selectedModel);
+              return m ? <span style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.45)", paddingLeft: "2px" }}>{m.note}</span> : null;
+            })()}
+          </div>
 
           {isWorkspaceActive && rooms.length > 1 && (
             <select
@@ -498,7 +504,7 @@ export default function DashboardPage() {
                   <div>
                     <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", opacity: 0.8 }}>Model</label>
                     <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(124,58,237,0.2)", color: "var(--light-text)", fontSize: "0.85rem" }}>
-                      {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                      {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} — {m.note}</option>)}
                     </select>
                   </div>
                   {roomError && <p style={{ color: "#ff6b6b", fontSize: "0.82rem" }}>{roomError}</p>}
