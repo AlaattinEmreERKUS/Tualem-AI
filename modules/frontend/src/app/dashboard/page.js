@@ -7,6 +7,70 @@ import "../auth.css";
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost";
 
+const BADGE_COLORS = ["#7c3aed", "#2563eb", "#059669", "#d97706", "#dc2626", "#0891b2"];
+
+function SourceBadges({ sources }) {
+  const [hovered, setHovered] = useState(null);
+
+  const grouped = sources.reduce((acc, s) => {
+    const key = s.document_id;
+    if (!acc[key]) acc[key] = { file_name: s.file_name || "Kaynak", chunks: [] };
+    acc[key].chunks.push(s);
+    return acc;
+  }, {});
+
+  const entries = Object.entries(grouped);
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px", alignItems: "center" }}>
+      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", marginRight: "2px" }}>kaynak:</span>
+      {entries.map(([docId, { file_name, chunks }], idx) => {
+        const color = BADGE_COLORS[idx % BADGE_COLORS.length];
+        const isHovered = hovered === docId;
+        const abbrev = file_name.replace(/\.[^.]+$/, "").slice(0, 2).toUpperCase();
+
+        return (
+          <div key={docId} style={{ position: "relative" }}
+            onMouseEnter={() => setHovered(docId)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%", background: color, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.65rem", fontWeight: 700, cursor: "pointer",
+              border: "2px solid rgba(255,255,255,0.2)", userSelect: "none", flexShrink: 0,
+            }}>
+              {abbrev}
+            </div>
+            {isHovered && (
+              <div style={{
+                position: "absolute", bottom: "34px", left: "50%", transform: "translateX(-50%)",
+                background: "#1e1e2e", border: `1px solid ${color}`, borderRadius: "8px",
+                padding: "10px 12px", minWidth: "220px", maxWidth: "320px",
+                zIndex: 50, boxShadow: "0 4px 20px rgba(0,0,0,0.5)", pointerEvents: "none",
+              }}>
+                <div style={{ fontWeight: 700, fontSize: "0.78rem", color, marginBottom: "6px", wordBreak: "break-word" }}>
+                  📄 {file_name}
+                </div>
+                {chunks.map((c, ci) => (
+                  <div key={ci} style={{
+                    fontSize: "0.72rem", color: "rgba(255,255,255,0.7)",
+                    borderTop: ci > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                    paddingTop: ci > 0 ? "4px" : 0, marginTop: ci > 0 ? "4px" : 0,
+                  }}>
+                    <span style={{ color, fontWeight: 600 }}>Parça {c.chunk_index + 1}:</span>{" "}
+                    {c.content.slice(0, 150)}{c.content.length > 150 ? "…" : ""}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const MODELS = [
   { id: "groq:llama-3.1-8b-instant",      label: "⚡ Llama 3.1 8B (Groq)" },
   { id: "groq:llama-3.3-70b-versatile",   label: "⚡ Llama 3.3 70B (Groq)" },
@@ -532,13 +596,7 @@ export default function DashboardPage() {
               {messages.map((m, i) => (
                 <div key={i} className={`msg ${m.sender === "ai" ? "ai" : m.sender === "system" ? "system" : "user"}`}>
                   <p>{m.text}</p>
-                  {m.sources?.length > 0 && (
-                    <div style={{ marginTop: "8px", fontSize: "0.75rem", opacity: 0.7 }}>
-                      {m.sources.map((s, si) => (
-                        <div key={si}>📎 Chunk {s.chunk_index} — {s.content.slice(0, 80)}...</div>
-                      ))}
-                    </div>
-                  )}
+                  {m.sources?.length > 0 && <SourceBadges sources={m.sources} />}
                 </div>
               ))}
               {isTyping && <div className="msg ai typing-dots"><span></span><span></span><span></span></div>}

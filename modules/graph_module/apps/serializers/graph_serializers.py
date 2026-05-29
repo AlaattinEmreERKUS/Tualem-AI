@@ -86,6 +86,7 @@ class QuerySourceSerializer(serializers.Serializer):
     chunk_index = serializers.IntegerField()
     content = serializers.CharField()
     document_id = serializers.UUIDField()
+    file_name = serializers.CharField(default="Bilinmeyen Kaynak")
 
 
 class QueryResponseSerializer(serializers.Serializer):

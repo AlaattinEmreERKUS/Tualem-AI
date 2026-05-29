@@ -123,6 +123,13 @@ class GraphRAGService:
         else:
             answer = _call_llm(RAG_PROMPT, {"context": context, "question": question}, provider, model)
 
+        from apps.models import Document
+        doc_ids = {str(c["document_id"]) for c in chunks}
+        doc_name_map = {
+            str(d.id): d.file_name
+            for d in Document.objects.filter(id__in=doc_ids).only("id", "file_name")
+        }
+
         return {
             "answer": answer,
             "provider": provider or os.getenv("LLM_PROVIDER", "auto"),
@@ -131,6 +138,7 @@ class GraphRAGService:
                     "chunk_index": c["chunk_index"],
                     "content": c["content"],
                     "document_id": str(c["document_id"]),
+                    "file_name": doc_name_map.get(str(c["document_id"]), "Bilinmeyen Kaynak"),
                 }
                 for c in chunks
             ],
