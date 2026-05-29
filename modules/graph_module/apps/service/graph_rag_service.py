@@ -37,21 +37,21 @@ Belge İçeriği:
     ),
     "test": PromptTemplate(
         input_variables=["context"],
-        template="""Aşağıdaki belge içeriğine dayanarak çoktan seçmeli 5 soru üret. Her soru için 4 şık (A, B, C, D) ve doğru cevabı belirt.
+        template="""Aşağıdaki belge içeriğine dayanarak çoktan seçmeli 5 soru üret.
+YALNIZCA aşağıdaki JSON formatında yanıt ver, başka açıklama ekleme:
+{{"questions":[{{"question":"<soru>","options":{{"A":"<şık>","B":"<şık>","C":"<şık>","D":"<şık>"}},"answer":"<A|B|C|D>","explanation":"<kısa açıklama>"}}]}}
 
 Belge İçeriği:
-{context}
-
-Test:""",
+{context}""",
     ),
     "yolharitasi": PromptTemplate(
         input_variables=["context"],
-        template="""Aşağıdaki belge içeriğine dayanarak adım adım bir öğrenme yol haritası oluştur. Konuları mantıklı bir sırayla ve açıklamalarıyla listele.
+        template="""Aşağıdaki belge içeriğine dayanarak 5-8 adımlı öğrenme yol haritası oluştur.
+YALNIZCA aşağıdaki JSON formatında yanıt ver, başka açıklama ekleme:
+{{"title":"<yol haritası başlığı>","steps":[{{"title":"<adım başlığı>","description":"<detaylı açıklama>","duration":"<tahmini süre>"}}]}}
 
 Belge İçeriği:
-{context}
-
-Öğrenme Yol Haritası:""",
+{context}""",
     ),
 }
 
@@ -151,7 +151,21 @@ class GraphRAGService:
 
         # Aksiyon varsa özel prompt, yoksa normal RAG
         if action and action in ACTION_PROMPTS:
-            answer = _call_llm(ACTION_PROMPTS[action], {"context": context}, provider, model)
+            raw = _call_llm(ACTION_PROMPTS[action], {"context": context}, provider, model)
+            if action in ("test", "yolharitasi"):
+                import json as _json
+                try:
+                    cleaned = raw.strip()
+                    if cleaned.startswith("```"):
+                        parts = cleaned.split("```")
+                        cleaned = parts[1] if len(parts) >= 2 else cleaned
+                        if cleaned.startswith("json"):
+                            cleaned = cleaned[4:].strip()
+                    answer = _json.dumps(_json.loads(cleaned), ensure_ascii=False)
+                except Exception:
+                    answer = raw
+            else:
+                answer = raw
         else:
             answer = _call_llm(RAG_PROMPT, {"context": context, "question": question}, provider, model)
 
@@ -164,6 +178,7 @@ class GraphRAGService:
 
         return {
             "answer": answer,
+            "action_type": action or "",
             "provider": provider or os.getenv("LLM_PROVIDER", "auto"),
             "sources": [
                 {

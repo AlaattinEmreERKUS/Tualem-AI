@@ -9,6 +9,180 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost";
 
 const BADGE_COLORS = ["#7c3aed", "#2563eb", "#059669", "#d97706", "#dc2626", "#0891b2"];
 
+// --- Export helpers ---
+function exportMD(content, filename) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF(content, title) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>` +
+    `<style>body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;line-height:1.7}` +
+    `h1{border-bottom:2px solid #333;padding-bottom:10px}pre{white-space:pre-wrap;word-wrap:break-word;font-family:Arial}</style>` +
+    `</head><body><h1>${title}</h1><pre>${content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`
+  );
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+function exportDOC(content, title) {
+  const html =
+    `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>` +
+    `<head><meta charset="utf-8"><title>${title}</title></head>` +
+    `<body><h1>${title}</h1><pre style="font-family:Arial">${content.replace(/</g, "&lt;")}</pre></body></html>`;
+  const blob = new Blob(["﻿", html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `${title}.doc`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+const _panelBtnStyle = {
+  padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.15)",
+  background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)",
+  cursor: "pointer", fontSize: "0.75rem", fontWeight: 600,
+};
+
+// --- Özet Panel ---
+function OzetPanel({ content, onClose }) {
+  const title = "Belge Özeti";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--light-text)" }}>📋 Özet</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1 }}>×</button>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", fontSize: "0.8rem", color: "var(--light-text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+        {content}
+      </div>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flexShrink: 0 }}>
+        <button onClick={() => exportMD(content, "ozet.md")} style={_panelBtnStyle}>⬇ MD</button>
+        <button onClick={() => exportPDF(content, title)} style={_panelBtnStyle}>⬇ PDF</button>
+        <button onClick={() => exportDOC(content, title)} style={_panelBtnStyle}>⬇ DOC</button>
+      </div>
+    </div>
+  );
+}
+
+// --- Test Panel ---
+function TestPanel({ data, answers, setAnswers, submitted, setSubmitted, onClose }) {
+  const questions = data?.questions ?? [];
+  const score = submitted
+    ? questions.reduce((acc, q, i) => acc + (answers[i] === q.answer ? 1 : 0), 0)
+    : 0;
+  const allAnswered = Object.keys(answers).length >= questions.length;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--light-text)" }}>📝 Test</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1 }}>×</button>
+      </div>
+
+      {submitted && (
+        <div style={{ flexShrink: 0, background: score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", borderRadius: "10px", padding: "10px 12px" }}>
+          <div style={{ fontWeight: 700, color: score >= Math.ceil(questions.length / 2) ? "#4ade80" : "#f87171", fontSize: "0.95rem" }}>
+            {score}/{questions.length} Doğru
+          </div>
+          {score < questions.length && (
+            <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)", marginTop: "4px" }}>
+              Eksik konular: {questions.filter((q, i) => answers[i] !== q.answer).map((q) => q.question.slice(0, 35) + "…").join(" • ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {questions.map((q, qi) => {
+          const correct = submitted && answers[qi] === q.answer;
+          const wrong = submitted && answers[qi] && answers[qi] !== q.answer;
+          return (
+            <div key={qi} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "10px", border: `1px solid ${submitted ? (correct ? "rgba(74,222,128,0.3)" : wrong ? "rgba(248,113,113,0.3)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.08)"}` }}>
+              <div style={{ fontWeight: 600, fontSize: "0.78rem", color: "var(--light-text)", marginBottom: "8px" }}>
+                {qi + 1}. {q.question}
+              </div>
+              {Object.entries(q.options || {}).map(([key, val]) => {
+                const selected = answers[qi] === key;
+                const isAnswer = submitted && key === q.answer;
+                const isWrong = submitted && selected && key !== q.answer;
+                return (
+                  <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: "6px", padding: "4px 6px", borderRadius: "6px", cursor: submitted ? "default" : "pointer", fontSize: "0.74rem", color: "var(--light-text)", background: isAnswer ? "rgba(74,222,128,0.15)" : isWrong ? "rgba(248,113,113,0.15)" : "transparent", marginBottom: "2px" }}>
+                    <input type="radio" name={`q-${qi}`} value={key} checked={selected} disabled={submitted}
+                      onChange={() => !submitted && setAnswers((prev) => ({ ...prev, [qi]: key }))}
+                      style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <span><strong>{key})</strong> {val}</span>
+                  </label>
+                );
+              })}
+              {submitted && q.explanation && (
+                <div style={{ marginTop: "6px", fontSize: "0.7rem", color: "rgba(255,255,255,0.5)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "6px" }}>
+                  💡 {q.explanation}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {!submitted && (
+        <button onClick={() => setSubmitted(true)} disabled={!allAnswered}
+          style={{ flexShrink: 0, padding: "10px", borderRadius: "8px", background: allAnswered ? "rgba(124,58,237,0.7)" : "rgba(124,58,237,0.25)", color: "#fff", border: "none", cursor: allAnswered ? "pointer" : "default", fontWeight: 600, fontSize: "0.85rem" }}>
+          Sonuçları Gör
+        </button>
+      )}
+    </div>
+  );
+}
+
+// --- Yol Haritası Modal ---
+function RoadmapModal({ data, onClose }) {
+  const [completedSteps, setCompletedSteps] = useState(new Set());
+  const steps = data?.steps ?? [];
+  const toggleStep = (i) => setCompletedSteps((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "var(--panel-bg)", borderRadius: "20px", padding: "28px", width: "min(700px, 90vw)", maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column", gap: "16px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ color: "var(--light-text)", margin: 0, fontSize: "1.1rem" }}>🗺️ {data?.title || "Öğrenme Yol Haritası"}</h3>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        </div>
+
+        <div style={{ flexShrink: 0, background: "rgba(255,255,255,0.05)", borderRadius: "8px", padding: "8px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.1)", borderRadius: "4px", height: "6px" }}>
+            <div style={{ width: `${steps.length ? (completedSteps.size / steps.length) * 100 : 0}%`, background: "#7c3aed", height: "100%", borderRadius: "4px", transition: "width 0.3s" }} />
+          </div>
+          <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>{completedSteps.size}/{steps.length} tamamlandı</span>
+        </div>
+
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+          {steps.map((step, i) => {
+            const done = completedSteps.has(i);
+            return (
+              <div key={i} onClick={() => toggleStep(i)} style={{ background: done ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${done ? "rgba(74,222,128,0.25)" : "rgba(255,255,255,0.1)"}`, borderRadius: "12px", padding: "14px 16px", cursor: "pointer", transition: "all 0.2s", display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: done ? "rgba(74,222,128,0.3)" : "rgba(124,58,237,0.3)", color: done ? "#4ade80" : "#a78bfa", fontWeight: 700, fontSize: "0.8rem" }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.85rem", color: done ? "#4ade80" : "var(--light-text)", textDecoration: done ? "line-through" : "none", marginBottom: "4px" }}>{step.title}</div>
+                  <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{step.description}</div>
+                  {step.duration && <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", marginTop: "4px" }}>⏱ {step.duration}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SourceBadges({ sources }) {
   const [hovered, setHovered] = useState(null);
 
@@ -115,6 +289,12 @@ export default function DashboardPage() {
   // Kaynakları hariç tutma
   const [excludedDocs, setExcludedDocs] = useState(new Set());
 
+  // Aksiyon paneli
+  const [actionPanel, setActionPanel] = useState(null); // { type, data, loading }
+  const [testAnswers, setTestAnswers] = useState({});
+  const [testSubmitted, setTestSubmitted] = useState(false);
+  const [roadmapData, setRoadmapData] = useState(null);
+
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -207,7 +387,7 @@ export default function DashboardPage() {
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
       if (data.type === "auth_ok") return;
-      const { role, message, is_streaming, sources } = data;
+      const { role, message, is_streaming, sources, action_type } = data;
       if (role === "user") return;
       if (role === "system") {
         setMessages((prev) => [...prev, { sender: "system", text: message }]);
@@ -215,7 +395,11 @@ export default function DashboardPage() {
       }
       setIsTyping(false);
       if (role === "assistant" && !is_streaming && message) {
-        setMessages((prev) => [...prev, { sender: "ai", text: message, sources: sources?.results ?? [] }]);
+        if (action_type) {
+          handleActionResponse(action_type, message);
+        } else {
+          setMessages((prev) => [...prev, { sender: "ai", text: message, sources: sources?.results ?? [] }]);
+        }
       }
     };
     ws.onclose = (e) => {
@@ -251,15 +435,36 @@ export default function DashboardPage() {
     }));
   }
 
+  function handleActionResponse(actionType, rawContent) {
+    if (actionType === "yolharitasi") {
+      setActionPanel(null);
+      try { setRoadmapData(JSON.parse(rawContent)); }
+      catch { setActionPanel({ type: "ozet", data: rawContent, loading: false }); }
+    } else if (actionType === "test") {
+      try {
+        const parsed = JSON.parse(rawContent);
+        setTestAnswers({});
+        setTestSubmitted(false);
+        setActionPanel({ type: "test", data: parsed, loading: false });
+      } catch {
+        setActionPanel({ type: "ozet", data: rawContent, loading: false });
+      }
+    } else if (actionType === "ozet") {
+      setActionPanel({ type: "ozet", data: rawContent, loading: false });
+    }
+  }
+
   function handleTestAction(actionType) {
     if (!wsRef.current) return;
-    const labels = { test: "📝 Test oluşturuluyor...", ozet: "📋 Özet çıkarılıyor...", yolharitasi: "🗺️ Yol haritası oluşturuluyor..." };
-    const text = labels[actionType];
-    setMessages((prev) => [...prev, { sender: "user", text }]);
-    setIsTyping(true);
+    const queryMap = {
+      test: "belge içeriği soru cevap",
+      ozet: "belge ana konular özet",
+      yolharitasi: "konular sıra öğrenme",
+    };
+    setActionPanel({ type: actionType, data: null, loading: true });
     const { provider, model } = parseModel(selectedModel);
     wsRef.current.send(JSON.stringify({
-      type: "message", message: text, model, provider, action: actionType,
+      type: "message", message: queryMap[actionType], model, provider, action: actionType,
       excluded_doc_ids: Array.from(excludedDocs),
     }));
   }
@@ -551,6 +756,9 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Yol Haritası Modal */}
+      {roadmapData && <RoadmapModal data={roadmapData} onClose={() => setRoadmapData(null)} />}
+
       {/* Ana workspace */}
       {isWorkspaceActive && (
         <div className="dashboard-layout" style={{ paddingTop: "60px" }}>
@@ -616,12 +824,36 @@ export default function DashboardPage() {
 
           {/* Sağ panel */}
           <aside className="tool-panel">
-            <h4>İşlemler</h4>
-            <div className="action-buttons">
-              <button className="action-btn" onClick={() => handleTestAction("test")}>📝 Test Oluştur</button>
-              <button className="action-btn" onClick={() => handleTestAction("ozet")}>📋 Özet Çıkar</button>
-              <button className="action-btn" onClick={() => handleTestAction("yolharitasi")}>🗺️ Yol Haritası</button>
-            </div>
+            {actionPanel ? (
+              actionPanel.loading ? (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", alignItems: "center", justifyContent: "center", gap: "14px" }}>
+                  <div className="typing-dots"><span /><span /><span /></div>
+                  <span style={{ fontSize: "0.8rem", color: "var(--light-muted)" }}>
+                    {actionPanel.type === "test" ? "Test oluşturuluyor…" : actionPanel.type === "ozet" ? "Özet çıkarılıyor…" : "Yol haritası hazırlanıyor…"}
+                  </span>
+                </div>
+              ) : actionPanel.type === "ozet" ? (
+                <OzetPanel content={actionPanel.data} onClose={() => setActionPanel(null)} />
+              ) : actionPanel.type === "test" ? (
+                <TestPanel
+                  data={actionPanel.data}
+                  answers={testAnswers}
+                  setAnswers={setTestAnswers}
+                  submitted={testSubmitted}
+                  setSubmitted={setTestSubmitted}
+                  onClose={() => { setActionPanel(null); setTestAnswers({}); setTestSubmitted(false); }}
+                />
+              ) : null
+            ) : (
+              <>
+                <h4>İşlemler</h4>
+                <div className="action-buttons">
+                  <button className="action-btn" onClick={() => handleTestAction("test")}>📝 Test Oluştur</button>
+                  <button className="action-btn" onClick={() => handleTestAction("ozet")}>📋 Özet Çıkar</button>
+                  <button className="action-btn" onClick={() => handleTestAction("yolharitasi")}>🗺️ Yol Haritası</button>
+                </div>
+              </>
+            )}
           </aside>
         </div>
       )}

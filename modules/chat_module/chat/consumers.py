@@ -206,6 +206,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             answer = result.get("answer", "")
             provider = result.get("provider", "")
             sources = result.get("sources", [])
+            action_type = result.get("action_type", "")
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -215,6 +216,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                     'message': answer,
                     'is_streaming': False,
                     'sources': {'results': sources, 'provider': provider},
+                    'action_type': action_type,
                 }
             )
 
@@ -255,7 +257,8 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             'role': event.get('role'),
             'message': event.get('message'),
             'is_streaming': event.get('is_streaming', False),
-            'sources': event.get('sources', {})
+            'sources': event.get('sources', {}),
+            'action_type': event.get('action_type', ''),
         }))
 
     @database_sync_to_async

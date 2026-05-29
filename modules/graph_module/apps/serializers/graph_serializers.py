@@ -91,5 +91,6 @@ class QuerySourceSerializer(serializers.Serializer):
 
 class QueryResponseSerializer(serializers.Serializer):
     answer = serializers.CharField()
+    action_type = serializers.CharField(allow_blank=True, default="")
     provider = serializers.CharField()
     sources = QuerySourceSerializer(many=True)
