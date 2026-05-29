@@ -496,7 +496,7 @@ export default function DashboardPage() {
                   )}
                 </div>
               ))}
-              {isTyping && <div className="msg ai typing-dots"><span>.</span><span>.</span><span>.</span></div>}
+              {isTyping && <div className="msg ai typing-dots"><span></span><span></span><span></span></div>}
               <div ref={messagesEndRef} />
             </div>
             <div className="chat-input-area">

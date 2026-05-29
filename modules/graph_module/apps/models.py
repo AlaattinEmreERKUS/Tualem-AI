@@ -33,6 +33,7 @@ class ContentChunk(models.Model):
     is_embedded = models.BooleanField(default=False)
     class Meta:
         app_label = 'graph'
+        unique_together = [('document', 'chunk_index')]
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

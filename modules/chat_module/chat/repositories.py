@@ -23,10 +23,14 @@ class ChatRepository:
 
     @staticmethod
     def create_message(room_obj, role, content, sources=None):
-
         return ChatMessage.objects.create(
             room=room_obj,
             role=role,
             content=content,
             sources=sources or {}
         )
+
+    @staticmethod
+    def delete_room(room_id, user_id) -> bool:
+        deleted, _ = ChatRoom.objects.filter(id=room_id, user_id=user_id).delete()
+        return deleted > 0

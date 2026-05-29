@@ -59,7 +59,7 @@ class VectorStore:
         results = (
             qs
             .alias(distance=CosineDistance("embedding", query_embedding))
-            .filter(distance__lte=0.95)
+            .filter(distance__lte=0.65)
             .order_by(CosineDistance("embedding", query_embedding))
             [:top_k]
             .values("id", "content", "chunk_index", "document_id")

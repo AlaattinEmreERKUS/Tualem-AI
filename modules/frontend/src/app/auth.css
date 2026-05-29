@@ -760,10 +760,46 @@ body.dark .nav-profile:hover {
 .msg.ai.typing-dots {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     padding: 10px 15px;
     min-height: 40px;
     width: fit-content;
+}
+
+.msg.ai.typing-dots span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--light-muted);
+    animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.msg.ai.typing-dots span:nth-child(1) { animation-delay: 0s; }
+.msg.ai.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.msg.ai.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30%            { transform: translateY(-6px); opacity: 1; }
+}
+
+.msg {
+    animation: msg-in 0.25s ease;
+}
+
+@keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.source-item {
+    animation: item-in 0.2s ease;
+}
+
+@keyframes item-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
 
 .delete-source-btn {
