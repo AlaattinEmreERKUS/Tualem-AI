@@ -144,6 +144,7 @@ class QueryView(APIView):
                 model=data.get("model", ""),
                 action=data.get("action", ""),
                 room_id=data.get("room_id") or None,
+                excluded_doc_ids=data.get("excluded_doc_ids") or [],
             )
             return Response(QueryResponseSerializer(result).data)
         except NoRelevantChunksException as e:

@@ -48,6 +48,9 @@ export default function DashboardPage() {
   const [showWebSearch, setShowWebSearch] = useState(false);
   const [arxivTopic, setArxivTopic] = useState("");
 
+  // Kaynakları hariç tutma
+  const [excludedDocs, setExcludedDocs] = useState(new Set());
+
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -178,7 +181,10 @@ export default function DashboardPage() {
     setMessages((prev) => [...prev, { sender: "user", text }]);
     setIsTyping(true);
     const { provider, model } = parseModel(selectedModel);
-    wsRef.current.send(JSON.stringify({ type: "message", message: text, model, provider }));
+    wsRef.current.send(JSON.stringify({
+      type: "message", message: text, model, provider,
+      excluded_doc_ids: Array.from(excludedDocs),
+    }));
   }
 
   function handleTestAction(actionType) {
@@ -188,7 +194,10 @@ export default function DashboardPage() {
     setMessages((prev) => [...prev, { sender: "user", text }]);
     setIsTyping(true);
     const { provider, model } = parseModel(selectedModel);
-    wsRef.current.send(JSON.stringify({ type: "message", message: text, model, provider, action: actionType }));
+    wsRef.current.send(JSON.stringify({
+      type: "message", message: text, model, provider, action: actionType,
+      excluded_doc_ids: Array.from(excludedDocs),
+    }));
   }
 
   function pollDocumentStatus(documentId, fileName) {
@@ -256,10 +265,28 @@ export default function DashboardPage() {
     setIsTyping(true);
   }
 
-  function deleteDocument(id) {
-    fetch(`/api/documents/${id}/`, { method: "DELETE", headers: getAuthHeader() })
-      .then(() => setDocuments((prev) => prev.filter((d) => d.id !== id)))
-      .catch(() => {});
+  function toggleDocExclusion(id) {
+    setExcludedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function deleteDocument(id) {
+    try {
+      const res = await fetch(`/api/documents/${id}/`, { method: "DELETE", headers: getAuthHeader() });
+      if (res.ok || res.status === 204) {
+        setDocuments((prev) => prev.filter((d) => d.id !== id));
+        setExcludedDocs((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setMessages((prev) => [...prev, { sender: "system", text: `❌ Kaynak silinemedi: ${body.error || res.status}` }]);
+      }
+    } catch {
+      setMessages((prev) => [...prev, { sender: "system", text: "❌ Kaynak silinirken bağlantı hatası oluştu." }]);
+    }
   }
 
   async function handleLogout() {
@@ -465,17 +492,35 @@ export default function DashboardPage() {
               {documents.length === 0 ? (
                 <p className="no-source-text">Henüz kaynak eklenmedi.</p>
               ) : (
-                documents.map((d) => (
-                  <div className="source-item" key={d.id}>
-                    <span className="source-name-text" title={d.file_name}>
-                      <DocStatusIcon status={d.status} />{" "}
-                      {d.file_name}
-                    </span>
-                    <div className="source-actions">
-                      <button onClick={() => deleteDocument(d.id)} className="delete-source-btn">×</button>
+                documents.map((d) => {
+                  const excluded = excludedDocs.has(d.id);
+                  return (
+                    <div
+                      className="source-item"
+                      key={d.id}
+                      style={{ opacity: excluded ? 0.4 : 1, transition: "opacity 0.2s" }}
+                    >
+                      <span className="source-name-text" title={d.file_name}>
+                        <DocStatusIcon status={d.status} />{" "}
+                        {d.file_name}
+                      </span>
+                      <div className="source-actions">
+                        <button
+                          onClick={() => toggleDocExclusion(d.id)}
+                          title={excluded ? "Sorguya dahil et" : "Sorgudan çıkar"}
+                          style={{
+                            background: excluded ? "rgba(255,165,0,0.2)" : "rgba(124,58,237,0.2)",
+                            border: "none", borderRadius: "4px", color: "var(--light-muted)",
+                            cursor: "pointer", padding: "2px 6px", fontSize: "0.7rem", marginRight: "4px",
+                          }}
+                        >
+                          {excluded ? "🔇" : "🔊"}
+                        </button>
+                        <button onClick={() => deleteDocument(d.id)} className="delete-source-btn">×</button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             <button className="add-source-footer-btn" onClick={() => setShowModal(true)}>+ Yeni Kaynak</button>

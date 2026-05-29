@@ -107,9 +107,9 @@ class GraphRAGService:
         RAGRepository.delete_document_embeddings(document_id)
 
     @staticmethod
-    def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None) -> dict:
+    def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None, excluded_doc_ids: list = None) -> dict:
         k = 10 if action else top_k
-        chunks = RAGRepository.vector_search(question, user_id, k, room_id=room_id)
+        chunks = RAGRepository.vector_search(question, user_id, k, room_id=room_id, excluded_doc_ids=excluded_doc_ids or [])
         if not chunks:
             raise NoRelevantChunksException()
 

@@ -82,6 +82,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         model = data.get('model', '')
         provider = data.get('provider', '')
         action = data.get('action', '')
+        excluded_doc_ids = data.get('excluded_doc_ids', [])
         if not user_message:
             return
 
@@ -90,7 +91,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {'type': 'chat_message', 'role': 'user', 'message': user_message}
         )
-        await self.process_rag_and_llm(user_message, model, provider, action)
+        await self.process_rag_and_llm(user_message, model, provider, action, excluded_doc_ids)
 
     async def handle_literature_search(self, data):
         topic = data.get('topic', '').strip()
@@ -144,7 +145,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    async def process_rag_and_llm(self, user_message, model="", provider="", action=""):
+    async def process_rag_and_llm(self, user_message, model="", provider="", action="", excluded_doc_ids=None):
         await self.channel_layer.group_send(
             self.room_group_name,
             {'type': 'chat_message', 'role': 'system', 'message': 'Grafik veritabanında araştırma yapılıyor...'}
@@ -154,7 +155,15 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             async with httpx.AsyncClient(timeout=600.0) as client:
                 response = await client.post(
                     f"{GRAPH_MODULE_URL}/api/query/",
-                    json={"question": user_message, "top_k": 5, "model": model, "provider": provider, "action": action, "room_id": str(self.room_id)},
+                    json={
+                        "question": user_message,
+                        "top_k": 5,
+                        "model": model,
+                        "provider": provider,
+                        "action": action,
+                        "room_id": str(self.room_id),
+                        "excluded_doc_ids": excluded_doc_ids or [],
+                    },
                     headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
                 )
 

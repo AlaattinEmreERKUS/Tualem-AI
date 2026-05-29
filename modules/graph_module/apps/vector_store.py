@@ -48,14 +48,22 @@ class VectorStore:
         user_id: str,
         top_k: int = 5,
         room_id: str = None,
+        excluded_doc_ids: list = None,
     ) -> List[Dict[str, Any]]:
         from apps.models import ContentChunk
+        from django.db.models import Q
         query_embedding = self.embed(query, is_query=True)
         qs = ContentChunk.objects.filter(is_embedded=True)
         if room_id:
-            qs = qs.filter(document__room_id=str(room_id))
+            # room'a ait + kullanıcının global (room_id=NULL) dokümanları
+            qs = qs.filter(
+                Q(document__room_id=str(room_id)) |
+                Q(document__room_id__isnull=True, document__user_id=str(user_id))
+            )
         elif user_id:
             qs = qs.filter(document__user_id=str(user_id))
+        if excluded_doc_ids:
+            qs = qs.exclude(document_id__in=excluded_doc_ids)
         results = (
             qs
             .alias(distance=CosineDistance("embedding", query_embedding))
