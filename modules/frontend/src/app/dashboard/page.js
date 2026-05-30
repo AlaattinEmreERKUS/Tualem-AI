@@ -74,58 +74,96 @@ function OzetPanel({ content, onClose }) {
 function TestModal({ data, answers, setAnswers, submitted, setSubmitted, onClose }) {
   const questions = data?.questions ?? [];
   const score = submitted ? questions.reduce((acc, q, i) => acc + (answers[i] === q.answer ? 1 : 0), 0) : 0;
+  const pct = questions.length ? Math.round((score / questions.length) * 100) : 0;
+  const passing = score >= Math.ceil(questions.length / 2);
+
+  const OPTION_COLORS = { A: "#7c3aed", B: "#2563eb", C: "#059669", D: "#d97706" };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "var(--panel-bg)", borderRadius: "20px", padding: "28px", width: "min(720px, 94vw)", maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column", gap: "16px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+      <div style={{ background: "#12121f", borderRadius: "20px", width: "min(820px, 100%)", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <h3 style={{ color: "var(--light-text)", margin: 0, fontSize: "1.1rem" }}>📝 Test</h3>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+          <div>
+            <h3 style={{ color: "#fff", margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>📝 Test</h3>
+            <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)" }}>{questions.length} soru</span>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#fff", cursor: "pointer", width: 36, height: 36, fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
 
-        {/* Skor */}
+        {/* Skor (sonuç sonrası) */}
         {submitted && (
-          <div style={{ flexShrink: 0, background: score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", borderRadius: "12px", padding: "14px 18px", border: `1px solid ${score >= Math.ceil(questions.length / 2) ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}` }}>
-            <div style={{ fontWeight: 700, color: score >= Math.ceil(questions.length / 2) ? "#4ade80" : "#f87171", fontSize: "1.1rem" }}>
-              {score}/{questions.length} Doğru — {Math.round((score / questions.length) * 100)}%
+          <div style={{ flexShrink: 0, margin: "20px 28px 0", background: passing ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)", borderRadius: "14px", padding: "18px 22px", border: `1px solid ${passing ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, display: "flex", alignItems: "center", gap: "20px" }}>
+            <div style={{ textAlign: "center", flexShrink: 0 }}>
+              <div style={{ fontSize: "2.2rem", fontWeight: 800, color: passing ? "#4ade80" : "#f87171", lineHeight: 1 }}>{pct}%</div>
+              <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", marginTop: "4px" }}>{score}/{questions.length} doğru</div>
             </div>
-            {score < questions.length && (
-              <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.55)", marginTop: "6px" }}>
-                Eksik konular: {questions.filter((q, i) => answers[i] !== q.answer).map((q) => q.question.slice(0, 40) + "…").join(" • ")}
+            <div style={{ flex: 1 }}>
+              <div style={{ height: "8px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: passing ? "#4ade80" : "#f87171", borderRadius: "4px", transition: "width 0.6s ease" }} />
               </div>
-            )}
+              {score < questions.length && (
+                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.45)", marginTop: "8px" }}>
+                  Eksik: {questions.filter((q, i) => answers[i] !== q.answer).map((q) => q.question.slice(0, 30) + "…").join(" • ")}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Sorular */}
-        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ overflowY: "auto", flex: 1, padding: "20px 28px", display: "flex", flexDirection: "column", gap: "20px" }}>
           {questions.map((q, qi) => {
-            const correct = submitted && answers[qi] === q.answer;
-            const wrong = submitted && answers[qi] && answers[qi] !== q.answer;
+            const qCorrect = submitted && answers[qi] === q.answer;
+            const qWrong = submitted && answers[qi] && answers[qi] !== q.answer;
             return (
-              <div key={qi} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "16px", border: `1px solid ${submitted ? (correct ? "rgba(74,222,128,0.3)" : wrong ? "rgba(248,113,113,0.3)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.08)"}` }}>
-                <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--light-text)", marginBottom: "12px" }}>
-                  {qi + 1}. {q.question}
+              <div key={qi} style={{ borderRadius: "14px", overflow: "hidden", border: `1px solid ${submitted ? (qCorrect ? "rgba(74,222,128,0.35)" : qWrong ? "rgba(248,113,113,0.35)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.08)"}` }}>
+                {/* Soru başlığı */}
+                <div style={{ background: "rgba(255,255,255,0.04)", padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                  <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: "50%", background: submitted ? (qCorrect ? "rgba(74,222,128,0.2)" : qWrong ? "rgba(248,113,113,0.2)" : "rgba(255,255,255,0.08)") : "rgba(124,58,237,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, color: submitted ? (qCorrect ? "#4ade80" : qWrong ? "#f87171" : "rgba(255,255,255,0.6)") : "#a78bfa" }}>
+                    {submitted ? (qCorrect ? "✓" : qWrong ? "✗" : qi + 1) : qi + 1}
+                  </span>
+                  <span style={{ fontSize: "0.95rem", color: "#fff", fontWeight: 500, lineHeight: 1.5 }}>{q.question}</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+
+                {/* Şıklar — düğme tabanlı */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px", background: "rgba(255,255,255,0.06)" }}>
                   {Object.entries(q.options || {}).map(([key, val]) => {
-                    const selected = answers[qi] === key;
-                    const isAnswer = submitted && key === q.answer;
-                    const isWrong = submitted && selected && key !== q.answer;
+                    const sel = answers[qi] === key;
+                    const isAns = submitted && key === q.answer;
+                    const isWrong = submitted && sel && key !== q.answer;
+                    const color = OPTION_COLORS[key] || "#7c3aed";
                     return (
-                      <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 12px", borderRadius: "8px", cursor: submitted ? "default" : "pointer", fontSize: "0.85rem", color: "var(--light-text)", background: isAnswer ? "rgba(74,222,128,0.15)" : isWrong ? "rgba(248,113,113,0.15)" : selected ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${isAnswer ? "rgba(74,222,128,0.3)" : isWrong ? "rgba(248,113,113,0.3)" : selected ? "rgba(124,58,237,0.3)" : "transparent"}`, transition: "background 0.15s" }}>
-                        <input type="radio" name={`q-${qi}`} value={key} checked={selected} disabled={submitted}
-                          onChange={() => !submitted && setAnswers((prev) => ({ ...prev, [qi]: key }))}
-                          style={{ marginTop: "2px", flexShrink: 0, accentColor: "#7c3aed" }} />
-                        <span><strong>{key})</strong> {val}</span>
-                      </label>
+                      <button
+                        key={key}
+                        disabled={submitted}
+                        onClick={() => !submitted && setAnswers((prev) => ({ ...prev, [qi]: key }))}
+                        style={{
+                          background: isAns ? "rgba(74,222,128,0.12)" : isWrong ? "rgba(248,113,113,0.12)" : sel ? `${color}22` : "#12121f",
+                          border: "none",
+                          borderLeft: `3px solid ${isAns ? "#4ade80" : isWrong ? "#f87171" : sel ? color : "transparent"}`,
+                          padding: "14px 16px",
+                          textAlign: "left",
+                          cursor: submitted ? "default" : "pointer",
+                          transition: "background 0.15s",
+                          display: "flex", alignItems: "flex-start", gap: "10px",
+                        }}
+                        onMouseEnter={(e) => { if (!submitted && !sel) e.currentTarget.style.background = `${color}15`; }}
+                        onMouseLeave={(e) => { if (!submitted && !sel) e.currentTarget.style.background = "#12121f"; }}
+                      >
+                        <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "6px", background: isAns ? "rgba(74,222,128,0.2)" : isWrong ? "rgba(248,113,113,0.2)" : sel ? `${color}33` : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, color: isAns ? "#4ade80" : isWrong ? "#f87171" : sel ? color : "rgba(255,255,255,0.4)" }}>
+                          {key}
+                        </span>
+                        <span style={{ fontSize: "0.88rem", color: isAns ? "#4ade80" : isWrong ? "#f87171" : sel ? "#fff" : "rgba(255,255,255,0.7)", lineHeight: 1.45 }}>{val}</span>
+                      </button>
                     );
                   })}
                 </div>
+
+                {/* Açıklama */}
                 {submitted && q.explanation && (
-                  <div style={{ marginTop: "10px", fontSize: "0.78rem", color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "10px" }}>
+                  <div style={{ padding: "12px 18px", background: "rgba(255,255,255,0.03)", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: "0.82rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
                     💡 {q.explanation}
                   </div>
                 )}
@@ -136,10 +174,11 @@ function TestModal({ data, answers, setAnswers, submitted, setSubmitted, onClose
 
         {/* Alt buton */}
         {!submitted && (
-          <button onClick={() => setSubmitted(true)}
-            style={{ flexShrink: 0, padding: "13px", borderRadius: "10px", background: "rgba(124,58,237,0.8)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.02em" }}>
-            Sonuçları Gör
-          </button>
+          <div style={{ padding: "16px 28px", borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+            <button onClick={() => setSubmitted(true)} style={{ width: "100%", padding: "14px", borderRadius: "10px", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "1rem", letterSpacing: "0.03em" }}>
+              Sonuçları Gör →
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -311,6 +350,11 @@ export default function DashboardPage() {
   // Kaynakları hariç tutma
   const [excludedDocs, setExcludedDocs] = useState(new Set());
 
+  // Panel genişlik kontrolü
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [showSourcesFullscreen, setShowSourcesFullscreen] = useState(false);
+
   // Aksiyon paneli
   const [actionPanel, setActionPanel] = useState(null); // { type, data, loading }
   const [testAnswers, setTestAnswers] = useState({});
@@ -342,9 +386,10 @@ export default function DashboardPage() {
     } catch {}
   }
 
-  async function fetchDocuments() {
+  async function fetchDocuments(roomId = null) {
     try {
-      const res = await fetch("/api/documents/", { headers: getAuthHeader() });
+      const url = roomId ? `/api/documents/?room_id=${roomId}` : "/api/documents/";
+      const res = await fetch(url, { headers: getAuthHeader() });
       if (res.ok) { const d = await res.json(); setDocuments(d.results ?? d); }
     } catch {}
   }
@@ -461,6 +506,8 @@ export default function DashboardPage() {
     setTestAnswers({});
     setTestSubmitted(false);
     setOpenMenuId(null);
+    setDocuments([]);
+    fetchDocuments(room.id);
     loadSavedActions(room.id);
     const ws = new WebSocket(`${WS_BASE}/ws/graph/chat/${room.id}/`);
     ws.onopen = () => ws.send(JSON.stringify({ type: "auth", token: getToken() }));
@@ -579,7 +626,7 @@ export default function DashboardPage() {
           clearInterval(interval);
           setDocuments((prev) => prev.map((d) => d.id === documentId ? { ...d, status: "completed" } : d));
           setMessages((prev) => prev.map((m) => m.msgId === msgId ? { ...m, text: `✅ "${fileName}" hazır!` } : m));
-          fetchDocuments();
+          fetchDocuments(activeRoom?.id);
         } else if (data.current_step === "failed") {
           clearInterval(interval);
           setDocuments((prev) => prev.map((d) => d.id === documentId ? { ...d, status: "failed" } : d));
@@ -930,13 +977,62 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Kaynak Yöneticisi Tam Ekran */}
+      {showSourcesFullscreen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ background: "#12121f", borderRadius: "20px", width: "min(640px, 100%)", maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+              <h3 style={{ color: "#fff", margin: 0, fontSize: "1rem", fontWeight: 700 }}>📂 Kaynak Yöneticisi</h3>
+              <button onClick={() => setShowSourcesFullscreen(false)} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#fff", cursor: "pointer", width: 34, height: 34, fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+              {documents.length === 0 ? (
+                <p style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", marginTop: "2rem" }}>Henüz kaynak yok.</p>
+              ) : (
+                documents.map((d) => {
+                  const excluded = excludedDocs.has(d.id);
+                  return (
+                    <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 14px", background: excluded ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)", borderRadius: "10px", marginBottom: "8px", border: "1px solid rgba(255,255,255,0.08)", opacity: excluded ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                      <DocStatusIcon status={d.status} />
+                      <span style={{ flex: 1, fontSize: "0.88rem", color: "#fff", wordBreak: "break-all" }}>{d.file_name}</span>
+                      <button onClick={() => toggleDocExclusion(d.id)} title={excluded ? "Dahil et" : "Çıkar"} style={{ background: excluded ? "rgba(255,165,0,0.15)" : "rgba(124,58,237,0.15)", border: "none", borderRadius: "6px", color: "rgba(255,255,255,0.6)", cursor: "pointer", padding: "4px 8px", fontSize: "0.75rem" }}>
+                        {excluded ? "🔇" : "🔊"}
+                      </button>
+                      <button onClick={() => deleteDocument(d.id)} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: "6px", color: "#f87171", cursor: "pointer", padding: "4px 10px", fontSize: "0.85rem" }}>×</button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div style={{ padding: "14px 24px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: "10px", flexShrink: 0 }}>
+              <button onClick={() => { triggerFileUpload(); setShowSourcesFullscreen(false); }} style={{ flex: 1, padding: "10px", borderRadius: "8px", background: "rgba(124,58,237,0.7)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" }}>📁 Dosya Yükle</button>
+              <button onClick={() => { setShowWebSearch(true); setShowSourcesFullscreen(false); }} style={{ flex: 1, padding: "10px", borderRadius: "8px", background: "rgba(255,255,255,0.08)", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.85rem" }}>🔬 arXiv</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ana workspace */}
       {isWorkspaceActive && (
-        <div className="dashboard-layout" style={{ paddingTop: "60px" }}>
+        <div className="dashboard-layout" style={{ paddingTop: "60px", gridTemplateColumns: `${leftCollapsed ? "48px" : "280px"} 1fr ${rightCollapsed ? "48px" : "280px"}`, transition: "grid-template-columns 0.25s ease" }}>
 
           {/* Sol panel */}
-          <aside className="side-panel">
-            <h4>Kaynaklarım</h4>
+          <aside className="side-panel" style={{ overflow: leftCollapsed ? "hidden" : "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: leftCollapsed ? 0 : "10px" }}>
+              {!leftCollapsed && <h4 style={{ margin: 0 }}>Kaynaklarım</h4>}
+              <div style={{ display: "flex", gap: "4px", marginLeft: leftCollapsed ? 0 : "auto" }}>
+                {!leftCollapsed && <button onClick={() => setShowSourcesFullscreen(true)} title="Tam ekran" style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "0.85rem", padding: "2px 4px" }}>⤢</button>}
+                <button onClick={() => setLeftCollapsed(!leftCollapsed)} title={leftCollapsed ? "Genişlet" : "Daralt"} style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "0.85rem", padding: "2px 4px" }}>
+                  {leftCollapsed ? "▶" : "◀"}
+                </button>
+              </div>
+            </div>
+            {leftCollapsed ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", paddingTop: "12px" }}>
+                <button onClick={() => setShowSourcesFullscreen(true)} title="Kaynak Yöneticisi" style={{ background: "rgba(124,58,237,0.2)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1rem" }}>📂</button>
+                <button onClick={() => setShowModal(true)} title="Kaynak Ekle" style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1rem" }}>+</button>
+              </div>
+            ) : (
             <div className="source-list">
               {documents.length === 0 ? (
                 <p className="no-source-text">Henüz kaynak eklenmedi.</p>
@@ -973,18 +1069,44 @@ export default function DashboardPage() {
               )}
             </div>
             <button className="add-source-footer-btn" onClick={() => setShowModal(true)}>+ Yeni Kaynak</button>
+            )}
           </aside>
 
           {/* Orta panel */}
           <section className="main-panel">
             <div className="chat-messages">
-              {messages.map((m, i) => (
-                <div key={i} className={`msg ${m.sender === "ai" ? "ai" : m.sender === "system" ? "system" : "user"}`}>
-                  <p>{m.text}</p>
-                  {m.sources?.length > 0 && <SourceBadges sources={m.sources} />}
+              {messages.map((m, i) => {
+                if (m.sender === "system") {
+                  return (
+                    <div key={i} style={{ alignSelf: "center", maxWidth: "80%", textAlign: "center", padding: "6px 14px", borderRadius: "20px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", fontSize: "0.78rem", color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>
+                      {m.text}
+                    </div>
+                  );
+                }
+                if (m.sender === "user") {
+                  return (
+                    <div key={i} style={{ alignSelf: "flex-end", maxWidth: "75%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                      <div style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "#fff", borderRadius: "18px 18px 4px 18px", padding: "10px 16px", fontSize: "0.88rem", lineHeight: 1.55 }}>
+                        {m.text}
+                      </div>
+                    </div>
+                  );
+                }
+                // AI mesajı
+                return (
+                  <div key={i} style={{ alignSelf: "flex-start", maxWidth: "80%", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--light-text)", borderRadius: "4px 18px 18px 18px", padding: "10px 16px", fontSize: "0.88rem", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                      {m.text}
+                    </div>
+                    {m.sources?.length > 0 && <SourceBadges sources={m.sources} />}
+                  </div>
+                );
+              })}
+              {isTyping && (
+                <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px 18px 18px 18px", padding: "12px 18px" }}>
+                  <div className="typing-dots"><span></span><span></span><span></span></div>
                 </div>
-              ))}
-              {isTyping && <div className="msg ai typing-dots"><span></span><span></span><span></span></div>}
+              )}
               <div ref={messagesEndRef} />
             </div>
             <div className="chat-input-area">
@@ -995,7 +1117,14 @@ export default function DashboardPage() {
 
           {/* Sağ panel */}
           <aside className="tool-panel" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            {actionPanel?.type === "ozet" ? (
+            {rightCollapsed ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", paddingTop: "12px" }}>
+                <button onClick={() => setRightCollapsed(false)} title="Genişlet" style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "0.85rem" }}>◀</button>
+                <button onClick={() => handleTestAction("test")} title="Test" style={{ background: "rgba(124,58,237,0.2)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1rem" }}>📝</button>
+                <button onClick={() => handleTestAction("ozet")} title="Özet" style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1rem" }}>📋</button>
+                <button onClick={() => handleTestAction("yolharitasi")} title="Yol Haritası" style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", width: 32, height: 32, fontSize: "1rem" }}>🗺️</button>
+              </div>
+            ) : actionPanel?.type === "ozet" ? (
               actionPanel.loading ? (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
                   <div className="typing-dots"><span /><span /><span /></div>
@@ -1011,7 +1140,10 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "0" }}>
-                <h4 style={{ margin: "0 0 12px", flexShrink: 0 }}>İşlemler</h4>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
+                  <h4 style={{ margin: 0 }}>İşlemler</h4>
+                  <button onClick={() => setRightCollapsed(true)} title="Daralt" style={{ background: "none", border: "none", color: "var(--light-muted)", cursor: "pointer", fontSize: "0.85rem" }}>▶</button>
+                </div>
                 <div className="action-buttons" style={{ flexShrink: 0 }}>
                   <button className="action-btn" onClick={() => handleTestAction("test")}>📝 Test Oluştur</button>
                   <button className="action-btn" onClick={() => handleTestAction("ozet")}>📋 Özet Çıkar</button>

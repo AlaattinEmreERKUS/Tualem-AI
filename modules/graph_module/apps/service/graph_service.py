@@ -14,8 +14,8 @@ from apps.exceptions.graph_exceptions import (
 class GraphService:
 
     @staticmethod
-    def get_documents(user_id):
-        documents = GraphRepository.get_document_list(user_id)
+    def get_documents(user_id, room_id=None):
+        documents = GraphRepository.get_document_list(user_id, room_id=room_id)
         if documents is None:
             raise DocumentNotFoundException()
         return documents
@@ -49,7 +49,13 @@ class GraphService:
         if not document:
             raise DocumentAccessDeniedException()
 
-        GraphRAGService.cleanup_document(document_id)
+        try:
+            GraphRAGService.cleanup_document(document_id)
+        except Exception:
+            import logging
+            logging.getLogger('graph_module').warning(
+                "cleanup_document failed for %s — proceeding with DB delete", document_id
+            )
 
         deleted = GraphRepository.delete_document(document_id, user_id)
         if not deleted:

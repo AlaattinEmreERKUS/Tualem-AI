@@ -6,8 +6,8 @@ from apps.models import Document, ContentChunk, GraphTask
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
-        fields = ['id', 'file_name', 'file_type', 'status', 'uploaded_at', 'updated_at']
-        read_only_fields = ['id', 'status', 'uploaded_at', 'updated_at']
+        fields = ['id', 'room_id', 'file_name', 'file_type', 'status', 'uploaded_at', 'updated_at']
+        read_only_fields = ['id', 'room_id', 'status', 'uploaded_at', 'updated_at']
 
 
 _ALLOWED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.pptx', '.ppt'}
