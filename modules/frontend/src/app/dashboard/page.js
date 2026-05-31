@@ -216,8 +216,21 @@ function RoadmapModal({ data, onClose }) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: "0.85rem", color: done ? "#4ade80" : "var(--light-text)", textDecoration: done ? "line-through" : "none", marginBottom: "4px" }}>{step.title}</div>
-                  <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{step.description}</div>
-                  {step.duration && <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", marginTop: "4px" }}>⏱ {step.duration}</div>}
+                  <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.5, marginBottom: "8px" }}>{step.description}</div>
+                  {step.duration && <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", marginBottom: "8px" }}>⏱ {step.duration}</div>}
+                  {step.substeps?.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {step.substeps.map((sub, si) => (
+                        <div key={si} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: "6px", borderLeft: "2px solid rgba(124,58,237,0.4)" }}>
+                          <span style={{ fontSize: "0.68rem", color: "#a78bfa", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>{si + 1}.</span>
+                          <div>
+                            <div style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{sub.title}</div>
+                            {sub.detail && <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)", marginTop: "2px" }}>{sub.detail}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -333,7 +346,7 @@ export default function DashboardPage() {
   const [savedActionsMap, setSavedActionsMap] = useState({});
 
   // Model seçici
-  const [selectedModel, setSelectedModel] = useState("groq:llama-3.1-8b-instant");
+  const [selectedModel, setSelectedModel] = useState("groq:llama-3.3-70b-versatile");
 
   // Oda kurulum modal
   const [showRoomSetup, setShowRoomSetup] = useState(false);
@@ -1149,6 +1162,21 @@ export default function DashboardPage() {
                   <button className="action-btn" onClick={() => handleTestAction("ozet")}>📋 Özet Çıkar</button>
                   <button className="action-btn" onClick={() => handleTestAction("yolharitasi")}>🗺️ Yol Haritası</button>
                 </div>
+
+                {/* Yol haritası hızlı erişim */}
+                {roadmapData && (
+                  <div style={{ flexShrink: 0, marginTop: "12px" }}>
+                    <div style={{ fontSize: "0.72rem", color: "var(--light-muted)", marginBottom: "6px", fontWeight: 600, opacity: 0.7 }}>YOL HARİTASI</div>
+                    <button onClick={() => setRoadmapData({ ...roadmapData })} style={{ width: "100%", padding: "10px 12px", background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", fontSize: "0.8rem", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(124,58,237,0.2)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "rgba(124,58,237,0.12)"}
+                    >
+                      <span>🗺️</span>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{roadmapData.title || "Yol Haritası"}</span>
+                      <span style={{ opacity: 0.5, fontSize: "0.7rem" }}>↗</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Kaydedilen aksiyonlar */}
                 {activeRoom && (savedActionsMap[activeRoom.id] || []).length > 0 && (

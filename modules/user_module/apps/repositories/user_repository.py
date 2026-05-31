@@ -40,11 +40,13 @@ class UserRepository:
 
     @staticmethod
     def save(user) -> bool:
+        import logging
         try:
             user.save()
             return True
-        except Exception:
-            return False
+        except Exception as e:
+            logging.getLogger('django').error("UserRepository.save failed: %s", e, exc_info=True)
+            raise
 
     @staticmethod
     def username_taken(username: str, exclude_id=None) -> bool:
