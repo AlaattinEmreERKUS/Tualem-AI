@@ -17,15 +17,11 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    'JWT_SECRET_KEY',
-    'django-insecure-hmcha#c#g1*^eh+)1+@j2350g$(3jnu-!$onj)oi9p4p2fr&7_'
-)
+SECRET_KEY = config('DJANGO_SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') + ['graph_module']
 
 
 # Application definition
@@ -37,9 +33,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'pgvector.django',
-    'apps',
+    'apps.apps.AppsConfig',
 ]
 
 REST_FRAMEWORK = {
@@ -52,6 +49,7 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -137,7 +135,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 JWT_SECRET = config('JWT_SECRET')
 
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://localhost:3001'
+).split(',')
+
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+
+from shared.logging_config import make_logging_config
+LOGGING = make_logging_config('graph_module', log_level=config('LOG_LEVEL', default='INFO'))
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

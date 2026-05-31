@@ -1,5 +1,8 @@
 import os
+import logging
 from celery import shared_task
+
+logger = logging.getLogger('graph_module')
 from apps.repositories.graph_repository import GraphRepository
 from apps.exceptions.graph_exceptions import PipelineException, EntityExtractionException
 
@@ -28,6 +31,46 @@ def _extract_text(file_path: str, file_type: str) -> str:
         from docx import Document as DocxDocument
         doc = DocxDocument(file_path)
         return "\n".join(p.text for p in doc.paragraphs)
+
+    if file_type == "application/vnd.ms-powerpoint":
+        import struct
+        import olefile
+        texts = []
+        try:
+            ole = olefile.OleFileIO(file_path)
+            if ole.exists("PowerPoint Document"):
+                stream = ole.openstream("PowerPoint Document").read()
+                i = 0
+                while i < len(stream) - 8:
+                    # PPT binary record: verInst(2) + typeCode(2) + length(4)
+                    try:
+                        type_code = struct.unpack_from("<H", stream, i + 2)[0]
+                        rec_len   = struct.unpack_from("<I", stream, i + 4)[0]
+                    except struct.error:
+                        break
+                    data_start = i + 8
+                    data_end   = data_start + rec_len
+                    if data_end > len(stream):
+                        break
+                    if type_code == 0x0FA0:  # TextBytesAtom — 1 byte per char
+                        texts.append(stream[data_start:data_end].decode("latin-1", errors="ignore"))
+                    elif type_code == 0x0FA8:  # TextCharsAtom — UTF-16LE
+                        texts.append(stream[data_start:data_end].decode("utf-16-le", errors="ignore"))
+                    i = data_end
+            ole.close()
+        except Exception as e:
+            logger.warning(".ppt parse error: %s", e)
+        return "\n".join(t.strip() for t in texts if t.strip())
+
+    if file_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        from pptx import Presentation
+        prs = Presentation(file_path)
+        texts = []
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    texts.append(shape.text.strip())
+        return "\n".join(texts)
 
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()

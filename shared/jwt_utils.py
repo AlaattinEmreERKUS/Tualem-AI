@@ -1,9 +1,11 @@
 import jwt
+import uuid
 from datetime import datetime, timezone, timedelta
 
 
 def generate_access_token(user_id: str, username: str, email: str, secret: str, lifetime_minutes: int) -> str:
     payload = {
+        "jti": str(uuid.uuid4()),
         "user_id": user_id,
         "username": username,
         "email": email,
@@ -16,6 +18,7 @@ def generate_access_token(user_id: str, username: str, email: str, secret: str, 
 
 def generate_refresh_token(user_id: str, secret: str, lifetime_days: int) -> str:
     payload = {
+        "jti": str(uuid.uuid4()),
         "user_id": user_id,
         "type": "refresh",
         "iat": datetime.now(tz=timezone.utc),

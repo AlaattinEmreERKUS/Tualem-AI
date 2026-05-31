@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                 ('document', models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE,
                     related_name='chunks',
-                    to='apps.document',
+                    to='graph.document',
                 )),
             ],
         ),
@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
                 ('document', models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE,
                     related_name='tasks',
-                    to='apps.document',
+                    to='graph.document',
                 )),
             ],
         ),

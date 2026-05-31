@@ -5,9 +5,13 @@ class GraphRepository:
     # --- Document ---
 
     @staticmethod
-    def get_document_list(user_id):
+    def get_document_list(user_id, room_id=None):
         try:
-            return Document.objects.filter(user_id=user_id).values()
+            qs = Document.objects.filter(user_id=str(user_id))
+            if room_id:
+                from django.db.models import Q
+                qs = qs.filter(Q(room_id=str(room_id)) | Q(room_id__isnull=True))
+            return qs.values()
         except Exception:
             return None
 
@@ -19,10 +23,11 @@ class GraphRepository:
             return None
 
     @staticmethod
-    def create_document(user_id, file_name, file_type, file):
+    def create_document(user_id, file_name, file_type, file, room_id=None):
         try:
             instance = Document(
                 user_id=user_id,
+                room_id=room_id,
                 file_name=file_name,
                 file_type=file_type,
                 file=file,

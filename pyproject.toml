@@ -1,2 +1,7 @@
 [tool.uv.workspace]
-members = ["modules/user_module", "modules/graph_module"]
+members = [
+    "shared",
+    "modules/user_module",
+    "modules/graph_module",
+    "modules/chat_module",
+]
