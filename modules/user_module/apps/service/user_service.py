@@ -2,10 +2,15 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from apps.repositories.user_repository import UserRepository
 from apps.utils.jwt_utils import generate_token_pair, generate_access_token, decode_token
+from apps.utils import verification
+from apps.utils.email_service import send_verification_email
 from apps.exceptions.user_exceptions import (
     InvalidCredentialsException,
     UserAlreadyExistsException,
     InvalidTokenException,
+    EmailNotVerifiedException,
+    InvalidVerificationCodeException,
+    ResendCooldownException,
     UserBaseException,
 )
 
@@ -31,16 +36,57 @@ class UserService:
         if UserRepository.exists_by_email(email):
             raise UserAlreadyExistsException("e-posta")
 
-        user = UserRepository.create(first_name, last_name, username, email, password)
+        # Doğrulanana dek pasif hesap — token verilmez
+        user = UserRepository.create(first_name, last_name, username, email, password, is_active=False)
         if not user:
             raise InvalidCredentialsException()
 
+        code = verification.generate_code()
+        verification.store_code(email, code)
+        verification.mark_resend(email)
+        send_verification_email(email, code)
+
+        return {"requires_verification": True, "email": email}
+
+    @staticmethod
+    def verify_email(email: str, code: str) -> dict:
+        stored = verification.get_code(email)
+        if not stored or stored != code:
+            raise InvalidVerificationCodeException()
+
+        UserRepository.activate(email)
+        verification.clear_code(email)
+
+        user = UserRepository.get_by_email(email)
+        if not user:
+            raise InvalidCredentialsException()
+
+        update_last_login(None, user)
         return {"user": _serialize_user(user), **generate_token_pair(user)}
+
+    @staticmethod
+    def resend_code(email: str) -> dict:
+        user = UserRepository.get_by_email(email)
+        if not user or user.is_active:
+            # Numaralandırma sızıntısını önle — yine de başarı dön
+            return {"detail": "Kod gönderildi."}
+        if not verification.can_resend(email):
+            raise ResendCooldownException()
+
+        code = verification.generate_code()
+        verification.store_code(email, code)
+        verification.mark_resend(email)
+        send_verification_email(email, code)
+        return {"detail": "Kod gönderildi."}
 
     @staticmethod
     def login(identifier: str, password: str) -> dict:
         user = authenticate(username=identifier, password=password)
         if not user:
+            # Pasif (doğrulanmamış) hesap mı kontrol et — net mesaj için
+            existing = UserRepository.get_by_username(identifier) or UserRepository.get_by_email(identifier)
+            if existing and not existing.is_active and existing.check_password(password):
+                raise EmailNotVerifiedException()
             raise InvalidCredentialsException()
 
         update_last_login(None, user)

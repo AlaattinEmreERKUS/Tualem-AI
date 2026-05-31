@@ -31,6 +31,21 @@ class InvalidTokenException(UserBaseException):
         super().__init__("Geçersiz token.")
 
 
+# --- E-posta doğrulama ---
+
+class EmailNotVerifiedException(UserBaseException):
+    def __init__(self):
+        super().__init__("E-posta adresiniz doğrulanmamış. Lütfen e-postanızı doğrulayın.")
+
+class InvalidVerificationCodeException(UserBaseException):
+    def __init__(self):
+        super().__init__("Doğrulama kodu hatalı veya süresi dolmuş.")
+
+class ResendCooldownException(UserBaseException):
+    def __init__(self):
+        super().__init__("Çok sık kod talep ediyorsunuz. Lütfen biraz bekleyin.")
+
+
 # --- Password ---
 
 class PasswordMismatchException(UserBaseException):

@@ -9,6 +9,7 @@ class EmailOrUsernameModelBackend(ModelBackend):
         except CustomUser.DoesNotExist:
             return None
 
-        if user.check_password(password):
+        # is_active=False → doğrulanmamış hesap, login engellenir
+        if user.check_password(password) and user.is_active:
             return user
         return None

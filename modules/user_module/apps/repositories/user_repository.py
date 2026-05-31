@@ -40,11 +40,13 @@ class UserRepository:
 
     @staticmethod
     def save(user) -> bool:
+        import logging
         try:
             user.save()
             return True
-        except Exception:
-            return False
+        except Exception as e:
+            logging.getLogger('django').error("UserRepository.save failed: %s", e, exc_info=True)
+            raise
 
     @staticmethod
     def username_taken(username: str, exclude_id=None) -> bool:
@@ -57,7 +59,7 @@ class UserRepository:
             return False
 
     @staticmethod
-    def create(first_name: str, last_name: str, username: str, email: str, password: str):
+    def create(first_name: str, last_name: str, username: str, email: str, password: str, is_active: bool = True):
         try:
             user = CustomUser.objects.create_user(
                 username=username,
@@ -67,7 +69,15 @@ class UserRepository:
                 last_name=last_name,
             )
             user.fullname = f"{first_name} {last_name}".strip()
+            user.is_active = is_active
             user.save()
             return user
         except Exception:
             return None
+
+    @staticmethod
+    def activate(email: str) -> bool:
+        try:
+            return CustomUser.objects.filter(email__iexact=email).update(is_active=True) > 0
+        except Exception:
+            return False

@@ -46,9 +46,9 @@ Belge İçeriği:
     ),
     "yolharitasi": PromptTemplate(
         input_variables=["context"],
-        template="""Aşağıdaki belge içeriğine dayanarak 5-8 adımlı öğrenme yol haritası oluştur.
+        template="""Aşağıdaki belge içeriğine dayanarak 5-8 adımlı öğrenme yol haritası oluştur. Her adım için 2-4 alt adım ekle.
 YALNIZCA aşağıdaki JSON formatında yanıt ver, başka açıklama ekleme:
-{{"title":"<yol haritası başlığı>","steps":[{{"title":"<adım başlığı>","description":"<detaylı açıklama>","duration":"<tahmini süre>"}}]}}
+{{"title":"<başlık>","steps":[{{"title":"<adım>","description":"<açıklama>","duration":"<süre>","substeps":[{{"title":"<alt adım>","detail":"<ne yapılacak>"}}]}}]}}
 
 Belge İçeriği:
 {context}""",

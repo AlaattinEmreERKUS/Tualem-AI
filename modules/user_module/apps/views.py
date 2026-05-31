@@ -19,6 +19,8 @@ from apps.serializers.user_serializers import (
     LoginSerializer,
     RefreshTokenSerializer,
     ProfileUpdateSerializer,
+    VerifyEmailSerializer,
+    ResendCodeSerializer,
 )
 from apps.exceptions.user_exceptions import (
     UserBaseException,
@@ -26,6 +28,9 @@ from apps.exceptions.user_exceptions import (
     UserAlreadyExistsException,
     TokenExpiredException,
     InvalidTokenException,
+    EmailNotVerifiedException,
+    InvalidVerificationCodeException,
+    ResendCooldownException,
 )
 from apps.utils.token_blacklist import blacklist_token
 from apps.utils.jwt_utils import decode_token as _decode_token
@@ -138,8 +143,43 @@ class LoginView(APIView):
                 password=data["password"],
             )
             return Response(result, status=status.HTTP_200_OK)
+        except EmailNotVerifiedException as e:
+            return Response({"error": e.message, "requires_verification": True}, status=status.HTTP_403_FORBIDDEN)
         except InvalidCredentialsException as e:
             return Response({"error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
+        except UserBaseException as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+        try:
+            result = UserService.verify_email(email=data["email"], code=data["code"])
+            return Response(result, status=status.HTTP_200_OK)
+        except InvalidVerificationCodeException as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except UserBaseException as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResendCodeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendCodeSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = UserService.resend_code(email=serializer.validated_data["email"])
+            return Response(result, status=status.HTTP_200_OK)
+        except ResendCooldownException as e:
+            return Response({"error": e.message}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except UserBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -196,6 +236,8 @@ class ProfileView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         data = serializer.validated_data
         try:
+            # request.data üzerinden al — PATCH multipart'ta request.FILES güvenilmez
+            profile_photo = data.get("profile_photo") or request.FILES.get("profile_photo")
             result = UserService.update_profile(
                 user_id=request.user.id,
                 first_name=data.get("first_name") or None,
@@ -203,13 +245,17 @@ class ProfileView(APIView):
                 username=data.get("username") or None,
                 old_password=data.get("old_password") or None,
                 new_password=data.get("new_password") or None,
-                profile_photo=request.FILES.get("profile_photo"),
+                profile_photo=profile_photo,
             )
             return Response(result, status=status.HTTP_200_OK)
         except UserAlreadyExistsException as e:
             return Response({"error": e.message}, status=status.HTTP_409_CONFLICT)
         except UserBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import logging
+            logging.getLogger('django').error("update_profile unexpected: %s", e, exc_info=True)
+            return Response({"error": f"Profil güncellenemedi: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LogoutView(APIView):

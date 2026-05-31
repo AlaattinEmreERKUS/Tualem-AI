@@ -1,171 +1,243 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { setToken } from '@/lib/auth';
-import '../auth.css';
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { setToken, isAuthenticated } from "@/lib/auth";
+import { getTheme, toggleTheme } from "@/lib/theme";
+import { Icon } from "@/lib/icons";
+
+function Feature({ icon, title, desc }) {
+  return (
+    <div className="feature">
+      <div className="f-ic"><Icon name={icon} size={20} /></div>
+      <div>
+        <div className="f-t">{title}</div>
+        <div className="f-d">{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+// 6 haneli kod giriş ekranı
+function VerifyForm({ email, password, onVerified, onBack }) {
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [seconds, setSeconds] = useState(30);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const refs = useRef([]);
+
+  useEffect(() => { refs.current[0]?.focus(); }, []);
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [seconds]);
+
+  const setDigit = (i, v) => {
+    const d = v.replace(/\D/g, "").slice(-1);
+    setCode((c) => { const n = [...c]; n[i] = d; return n; });
+    if (d && i < 5) refs.current[i + 1]?.focus();
+  };
+  const onKey = (i, e) => {
+    if (e.key === "Backspace" && !code[i] && i > 0) refs.current[i - 1]?.focus();
+  };
+  const onPaste = (e) => {
+    const txt = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6).split("");
+    if (txt.length) { e.preventDefault(); setCode([...txt, "", "", "", "", "", ""].slice(0, 6)); refs.current[Math.min(txt.length, 5)]?.focus(); }
+  };
+  const filled = code.every((d) => d !== "");
+
+  async function verify() {
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-email/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: code.join("") }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || "Doğrulama başarısız."); return; }
+      // Doğrulama token döner — direkt giriş
+      if (data.access_token) { setToken(data.access_token); onVerified(); }
+      else onVerified();
+    } catch {
+      setError("Sunucuya bağlanılamadı.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resend() {
+    setError("");
+    try {
+      await fetch("/api/auth/resend-code/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setSeconds(30);
+    } catch {}
+  }
+
+  return (
+    <div className="auth-form">
+      <button className="back-link" onClick={onBack}><Icon name="arrow-left" size={15} />Geri</button>
+      <div className="verify-icon"><Icon name="mail" size={26} /></div>
+      <h2>E-postanızı doğrulayın</h2>
+      <p className="lede" style={{ marginBottom: 0 }}>
+        <span className="verify-email">{email}</span> adresine 6 haneli bir kod gönderdik.
+      </p>
+      {error && <div className="auth-error" style={{ marginTop: 16 }}>{error}</div>}
+      <div className="code-row" onPaste={onPaste}>
+        {code.map((d, i) => (
+          <input
+            key={i}
+            ref={(el) => (refs.current[i] = el)}
+            className={`code-box${d ? " filled" : ""}`}
+            inputMode="numeric"
+            maxLength={1}
+            value={d}
+            onChange={(e) => setDigit(i, e.target.value)}
+            onKeyDown={(e) => onKey(i, e)}
+          />
+        ))}
+      </div>
+      <button className="btn btn-primary btn-block btn-lg" disabled={!filled || loading} onClick={verify} style={{ marginTop: "var(--sp-4)" }}>
+        {loading ? "Doğrulanıyor…" : "Doğrula ve devam et"}<Icon name="arrow-right" size={16} />
+      </button>
+      <div className="resend">
+        Kod gelmedi mi?{" "}
+        {seconds > 0 ? <span>Yeniden gönder ({seconds}s)</span> : <button onClick={resend}>Yeniden gönder</button>}
+      </div>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [theme, setTheme] = useState("dark");
+  const [showPw, setShowPw] = useState(false);
+  const [mode, setMode] = useState("register"); // register | verify
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDark(true);
-      document.body.classList.add('dark');
-    }
-  }, []);
+    if (isAuthenticated()) { router.push("/dashboard"); return; }
+    setTheme(getTheme());
+  }, [router]);
 
-  const toggleTheme = () => {
-    const newMode = !isDark;
-    setIsDark(newMode);
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', newMode ? 'dark' : 'light');
-  };
+  async function handleRegister(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, username, email, password, confirm_password: password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data.username?.[0] || data.email?.[0] || data.password?.[0] || data.error || "Kayıt başarısız.";
+        setError(msg);
+        return;
+      }
+      // Backend doğrulama istiyor → verify ekranı
+      setMode("verify");
+    } catch {
+      setError("Sunucuya bağlanılamadı.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="page" style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="navbar" style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '1.5rem 4rem', width: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1000
-      }}>
-        <div className="nav-left" style={{ fontWeight: '800', fontSize: '1.5rem' }}>🧠 Tualem AI</div>
-        <button type="button" className="theme-btn" onClick={toggleTheme}>
-          {isDark ? '☀️ Açık' : '🌙 Koyu'}
-        </button>
-      </nav>
-
-      <main className="main-content" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '80px' }}>
-        <div className="auth-shell">
-          <section className="auth-left">
-            <div>
-              <div className="auth-badge">Research Intelligence Platform</div>
-              <div className="auth-brand">
-                <h1>Yeni nesil araştırma deneyimine katılın.</h1>
-                <p>Tualem AI, araştırma süreçlerini sadece saklamaz; onları analiz eder, bağlar ve anlamlı bilgi yapılarına dönüştürür.</p>
-              </div>
-              <div className="feature-list">
-                <div className="feature-card">
-                  <h3>Kişisel Bilgi Alanı</h3>
-                  <p>Araştırmalarınızı, kaynaklarınızı ve kavramsal ilişkilerinizi tek bir yapı altında yönetin.</p>
-                </div>
-                <div className="feature-card">
-                  <h3>Yapay Zekâ Destekli Rehberlik</h3>
-                  <p>Bilgi keşfi, sınıflandırma ve içerik ilişkilendirme süreçlerinde akıllı destek alın.</p>
-                </div>
-                <div className="feature-card">
-                  <h3>Daha Derin Analiz</h3>
-                  <p>Bilgiyi yalnızca depolamak yerine, aralarındaki bağlantıları görünür hale getirerek daha derin içgörüler üretin.</p>
-                </div>
-              </div>
+    <div className="app-root">
+      <div className="auth">
+        {/* SOL — tanıtım */}
+        <div className="auth-intro">
+          <div className="brand">
+            <span className="logo"><Icon name="network" size={26} /></span>
+            <span className="wm">Tualem<small>AI</small></span>
+          </div>
+          <div>
+            <h1 className="auth-headline">Kaynaklarınızdan düşünen bir çalışma ortağı.</h1>
+            <p className="auth-sub">Belgelerinizi ve makalelerinizi bir bilgi grafiğine dönüştürün; sorun, özetleyin, test edin — her yanıt kaynağına bağlı.</p>
+            <div className="feature-list">
+              <Feature icon="network" title="Bilgi grafiği" desc="Belgeler arasındaki kavramlar otomatik bağlanır." />
+              <Feature icon="message-square" title="Kaynağa dayalı sohbet" desc="Her yanıtta kaynak rozetleri." />
+              <Feature icon="list-checks" title="Test & yol haritası" desc="Otomatik quiz ve öğrenme planı." />
             </div>
-            <div className="auth-footer-note" style={{ marginTop: '20px', opacity: 0.7 }}>
-              Daha güçlü bir araştırma altyapısı için hesabınızı oluşturun.
-            </div>
-          </section>
+          </div>
+          <div className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>PDF · DOCX · PPTX · arXiv</div>
+        </div>
 
-          <section className="auth-right">
-            <div className="form-box">
-              <div className="logo">Yeni Hesap</div>
-              <h1 className="title">Kayıt Ol</h1>
+        {/* SAĞ — form */}
+        <div className="auth-form-wrap">
+          <div className="auth-top-actions">
+            <button className="icon-btn" onClick={() => setTheme(toggleTheme())} title="Tema değiştir">
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={18} />
+            </button>
+          </div>
 
-              {error && (
-                <div style={{ background: 'var(--error-bg)', color: 'var(--error-text)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.875rem' }}>
-                  {error}
-                </div>
-              )}
+          {mode === "verify" ? (
+            <VerifyForm email={email} password={password} onVerified={() => router.push("/dashboard")} onBack={() => setMode("register")} />
+          ) : (
+            <div className="auth-form">
+              <h2>Hesap oluştur</h2>
+              <p className="lede">Çalışma ortamınızı birkaç saniyede kurun.</p>
 
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setError('');
-                setLoading(true);
-                try {
-                  const res = await fetch('/api/auth/register/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ first_name: firstName, last_name: lastName, username, email, password, confirm_password: confirmPassword }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) {
-                    const msg = data.username?.[0] || data.email?.[0] || data.password?.[0] || data.confirm_password?.[0] || data.error || 'Kayıt başarısız.';
-                    setError(msg);
-                    return;
-                  }
-                  const loginRes = await fetch('/api/auth/login/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: username, password }),
-                  });
-                  if (loginRes.ok) {
-                    const loginData = await loginRes.json();
-                    setToken(loginData.access_token);
-                    router.push('/dashboard');
-                  } else {
-                    router.push('/login');
-                  }
-                } catch {
-                  setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
-                } finally {
-                  setLoading(false);
-                }
-              }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
+              {error && <div className="auth-error">{error}</div>}
+
+              <form className="form-rows" onSubmit={handleRegister}>
+                <div className="form-2col">
+                  <div className="field">
                     <label>Ad</label>
-                    <input type="text" placeholder="Adınız" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                    <div className="input"><Icon name="user" size={16} /><input placeholder="Adınız" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div>
                   </div>
-                  <div>
+                  <div className="field">
                     <label>Soyad</label>
-                    <input type="text" placeholder="Soyadınız" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                    <div className="input"><input placeholder="Soyadınız" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div>
                   </div>
                 </div>
-                <label>Kullanıcı Adı</label>
-                <input type="text" placeholder="Kullanıcı adınızı girin" value={username} onChange={(e) => setUsername(e.target.value)} required />
-                <label>Email</label>
-                <input type="email" placeholder="Email adresinizi girin" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <label>Şifre</label>
-                <div className="password-wrapper">
-                  <input type={showPass ? "text" : "password"} placeholder="Şifrenizi girin" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                  <button type="button" className="show-btn" onClick={() => setShowPass(!showPass)}>
-                    {showPass ? "Gizle" : "Göster"}
-                  </button>
+                <div className="field">
+                  <label>Kullanıcı adı</label>
+                  <div className="input"><Icon name="at-sign" size={16} /><input placeholder="kullanıcıadı" value={username} onChange={(e) => setUsername(e.target.value)} required /></div>
                 </div>
-                <label>Şifre Tekrar</label>
-                <div className="password-wrapper">
-                  <input type={showConfirm ? "text" : "password"} placeholder="Şifrenizi tekrar girin" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
-                  <button type="button" className="show-btn" onClick={() => setShowConfirm(!showConfirm)}>
-                    {showConfirm ? "Gizle" : "Göster"}
-                  </button>
+                <div className="field">
+                  <label>E-posta</label>
+                  <div className="input"><Icon name="mail" size={16} /><input type="email" placeholder="ad@universite.edu.tr" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                 </div>
-                <button className="btn" type="submit" disabled={loading}>
-                  {loading ? 'Kayıt olunuyor...' : 'Kayıt Ol'}
+                <div className="field">
+                  <label>Şifre</label>
+                  <div className="input">
+                    <Icon name="lock" size={16} />
+                    <input type={showPw ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <button type="button" className="icon-btn" style={{ padding: 2 }} onClick={() => setShowPw((s) => !s)} tabIndex={-1}>
+                      <Icon name={showPw ? "eye-off" : "eye"} size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading} style={{ marginTop: 4 }}>
+                  {loading ? "Hesap oluşturuluyor…" : "Hesabı oluştur"}<Icon name="arrow-right" size={16} />
                 </button>
               </form>
-              <div className="row">Zaten hesabın var mı? <Link href="/login">Giriş yap</Link></div>
-            </div>
-          </section>
-        </div>
-      </main>
 
-      <footer className="auth-footer" style={{ padding: '1.5rem 4rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', opacity: 0.6 }}>
-        <div>© 2026 Tualem AI. Tüm hakları saklıdır.</div>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <Link href="#">Gizlilik</Link>
-          <Link href="#">Şartlar</Link>
-          <Link href="#">Destek</Link>
+              <div className="auth-switch">
+                Zaten hesabınız var mı? <Link href="/login">Giriş yapın</Link>
+              </div>
+            </div>
+          )}
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

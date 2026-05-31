@@ -1,204 +1,131 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { setToken, isAuthenticated } from '@/lib/auth';
-import '../auth.css';
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { setToken, isAuthenticated } from "@/lib/auth";
+import { getTheme, toggleTheme } from "@/lib/theme";
+import { Icon } from "@/lib/icons";
+
+function Feature({ icon, title, desc }) {
+  return (
+    <div className="feature">
+      <div className="f-ic"><Icon name={icon} size={20} /></div>
+      <div>
+        <div className="f-t">{title}</div>
+        <div className="f-d">{desc}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [theme, setTheme] = useState("dark");
+  const [showPw, setShowPw] = useState(false);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      router.push('/dashboard');
-      return;
-    }
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDark(true);
-      document.body.classList.add('dark');
-    }
+    if (isAuthenticated()) { router.push("/dashboard"); return; }
+    setTheme(getTheme());
   }, [router]);
 
-  
-  const toggleTheme = () => {
-    const newMode = !isDark;
-    setIsDark(newMode);
-    
-    if (newMode) {
-      document.body.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.body.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.requires_verification) {
+          setError("E-posta doğrulanmamış. Kayıt sayfasından kodu girin.");
+        } else {
+          setError(data.detail || data.error || "Kullanıcı adı veya şifre hatalı.");
+        }
+        return;
+      }
+      setToken(data.access_token);
+      router.push("/dashboard");
+    } catch {
+      setError("Sunucuya bağlanılamadı. Lütfen tekrar deneyin.");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="page" style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      overflowX: 'hidden' 
-    }}>
-      
-      {}
-      <nav className="navbar" style={{
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        padding: '1.5rem 4rem',
-        width: '100%',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        zIndex: 1000
-      }}>
-        <div className="nav-left" style={{ fontWeight: '800', fontSize: '1.5rem' }}>
-          🧠 Tualem AI
-        </div>
-        <div className="nav-right">
-          <button type="button" className="theme-btn" onClick={toggleTheme}>
-            {isDark ? '☀️ Açık' : '🌙 Koyu'}
-          </button>
-        </div>
-      </nav>
-
-      {}
-      <main className="main-content" style={{ 
-        flex: 1, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        paddingTop: '80px',
-        width: '100%' 
-      }}>
-        <div className="auth-shell">
-          
-          {}
-          <section className="auth-left">
-            <div>
-              <div className="auth-badge">Research Intelligence Platform</div>
-              <div className="auth-brand">
-                <h1>Bilgiyi bağla, araştırmayı hızlandır.</h1>
-                <p>Kişisel araştırma alanınıza erişerek çalışmalarınıza kaldığınız yerden devam edin.</p>
-              </div>
-
-              <div className="feature-list" style={{ marginTop: '30px' }}>
-                <div className="feature-item" style={{ marginBottom: '20px' }}>
-                  <h4 style={{ color: 'var(--accent-color)', marginBottom: '5px' }}>🚀 Akıllı Analiz</h4>
-                  <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>Yüklediğiniz dökümanlar saniyeler içinde taranır ve önemli noktalar çıkarılır.</p>
-                </div>
-                <div className="feature-item" style={{ marginBottom: '20px' }}>
-                  <h4 style={{ color: 'var(--accent-color)', marginBottom: '5px' }}>🧠 Kavram Haritaları</h4>
-                  <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>Bilgiler arasındaki gizli bağlantıları görselleştirerek daha derin içgörüler edinin.</p>
-                </div>
-                <div className="feature-item">
-                  <h4 style={{ color: 'var(--accent-color)', marginBottom: '5px' }}>🛡️ Güvenli Depolama</h4>
-                  <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>Tüm araştırmalarınız uçtan uca şifrelenmiş bir alanda güvenle saklanır.</p>
-                </div>
-              </div>
+    <div className="app-root">
+      <div className="auth">
+        {/* SOL — tanıtım */}
+        <div className="auth-intro">
+          <div className="brand">
+            <span className="logo"><Icon name="network" size={26} /></span>
+            <span className="wm">Tualem<small>AI</small></span>
+          </div>
+          <div>
+            <h1 className="auth-headline">Bilgiyi bağla, araştırmayı hızlandır.</h1>
+            <p className="auth-sub">Kişisel araştırma alanınıza erişerek belgelerinizi, makalelerinizi ve kavramsal bağlantılarınızı tek yerden yönetin.</p>
+            <div className="feature-list">
+              <Feature icon="network" title="Bilgi grafiği" desc="Belgeler arasındaki kavramlar otomatik bağlanır; ilişkili fikirleri tek bakışta görün." />
+              <Feature icon="message-square" title="Kaynağa dayalı sohbet" desc="Her yanıtta hangi belgeden geldiğini gösteren kaynak rozetleri." />
+              <Feature icon="list-checks" title="Test & yol haritası" desc="Çalıştığınız konudan otomatik quiz ve adım adım öğrenme planı." />
             </div>
-          </section>
+          </div>
+          <div className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>PDF · DOCX · PPTX · arXiv</div>
+        </div>
 
-          {}
-          <section className="auth-right">
-            <div className="form-box">
-              <div className="logo">Hoş Geldiniz</div>
-              <h1 className="title">Giriş Yap</h1>
-              <p className="sub">Hesabınıza giriş yaparak araştırmaya devam edin.</p>
+        {/* SAĞ — form */}
+        <div className="auth-form-wrap">
+          <div className="auth-top-actions">
+            <button className="icon-btn" onClick={() => setTheme(toggleTheme())} title="Tema değiştir">
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={18} />
+            </button>
+          </div>
+          <div className="auth-form">
+            <h2>Tekrar hoş geldiniz</h2>
+            <p className="lede">Çalışma alanınıza giriş yapın.</p>
 
-              {error && (
-                <div style={{ background: 'var(--error-bg)', color: 'var(--error-text)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.875rem' }}>
-                  {error}
+            {error && <div className="auth-error">{error}</div>}
+
+            <form className="form-rows" onSubmit={handleSubmit}>
+              <div className="field">
+                <label>Kullanıcı adı veya e-posta</label>
+                <div className="input">
+                  <Icon name="user" size={16} />
+                  <input placeholder="kullanıcı adı veya e-posta" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
                 </div>
-              )}
-
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setError('');
-                setLoading(true);
-                try {
-                  const res = await fetch('/api/auth/login/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier, password }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) {
-                    setError(data.detail || data.error || 'Kullanıcı adı veya şifre hatalı.');
-                    return;
-                  }
-                  setToken(data.access_token);
-                  router.push('/dashboard');
-                } catch {
-                  setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
-                } finally {
-                  setLoading(false);
-                }
-              }}>
-                <label>Kullanıcı Adı veya E-posta</label>
-                <input
-                  type="text"
-                  placeholder="Kullanıcı adı veya e-posta girin"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  required
-                />
-
+              </div>
+              <div className="field">
                 <label>Şifre</label>
-                <div className="password-wrapper">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Şifrenizi girin"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="show-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? "Gizle" : "Göster"}
+                <div className="input">
+                  <Icon name="lock" size={16} />
+                  <input type={showPw ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <button type="button" className="icon-btn" style={{ padding: 2 }} onClick={() => setShowPw((s) => !s)} tabIndex={-1}>
+                    <Icon name={showPw ? "eye-off" : "eye"} size={16} />
                   </button>
                 </div>
-
-                <button className="btn" type="submit" disabled={loading}>
-                  {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-                </button>
-              </form>
-              <div className="row">
-                Hesabın yok mu? <Link href="/register">Kayıt ol</Link>
               </div>
-            </div>
-          </section>
-        </div>
-      </main>
 
-      {}
-      <footer className="auth-footer" style={{
-        padding: '1.5rem 4rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        width: '100%',
-        fontSize: '0.8rem',
-        opacity: 0.6
-      }}>
-        <div>© 2026 Tualem AI. Tüm hakları saklıdır.</div>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <Link href="#">Gizlilik Politikası</Link>
-          <Link href="#">Kullanım Şartları</Link>
-          <Link href="#">Yardım Merkezi</Link>
+              <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading} style={{ marginTop: 4 }}>
+                {loading ? "Giriş yapılıyor…" : "Giriş yap"}
+                <Icon name="arrow-right" size={16} />
+              </button>
+            </form>
+
+            <div className="auth-switch">
+              Hesabınız yok mu? <Link href="/register">Kayıt olun</Link>
+            </div>
+          </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
