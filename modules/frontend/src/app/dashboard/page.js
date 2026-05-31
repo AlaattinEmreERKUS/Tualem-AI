@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getToken, getAuthHeader, isAuthenticated, removeToken, getTokenPayload } from "@/lib/auth";
 import { getTheme, toggleTheme as toggleThemeFn } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
+import { getPreference, applyAccent } from "@/lib/preferences";
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost";
 
@@ -418,15 +419,17 @@ export default function DashboardPage() {
   const [testModal, setTestModal] = useState(null);
   const [roadmapData, setRoadmapData] = useState(null);
   const [summaryPanel, setSummaryPanel] = useState(null);
-  const [layout, setLayout] = useState("klasik");
+  const [layout, setLayout] = useState(() => getPreference("layout", "klasik"));
   const [odakSlideover, setOdakSlideover] = useState(null);
 
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const actionMsgIdRef = useRef(null);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push("/login"); return; }
     setTheme(getTheme());
+    applyAccent(getPreference("accent", "amber"));
     try { setFavoritedRooms(new Set(JSON.parse(localStorage.getItem("tualem_favorites") || "[]"))); } catch {}
     const payload = getTokenPayload();
     if (payload) setProfileUsername(payload.username || "");
@@ -559,7 +562,7 @@ export default function DashboardPage() {
       if (data.type === "auth_ok") return;
       const { role, message, is_streaming, sources, action_type } = data;
       if (role === "user") return;
-      if (role === "system") { setMessages((prev) => [...prev, { sender: "system", text: message }]); return; }
+      if (role === "system") return;
       setIsTyping(false);
       if (role === "assistant" && !is_streaming && message) {
         if (action_type) handleActionResponse(action_type, message);
@@ -598,23 +601,28 @@ export default function DashboardPage() {
 
   function handleActionResponse(actionType, rawContent) {
     const roomId = activeRoom?.id;
+    const msgId = actionMsgIdRef.current;
+    const updMsg = (text) => { if (msgId) setMessages((prev) => prev.map((m) => m.msgId === msgId ? { ...m, text } : m)); };
     if (actionType === "yolharitasi") {
-      try { const parsed = JSON.parse(rawContent); setRoadmapData(parsed); if (roomId) saveActionToStorage(roomId, "yolharitasi", parsed); }
-      catch { setSummaryPanel({ loading: false, content: rawContent }); }
+      try { const parsed = JSON.parse(rawContent); setRoadmapData(parsed); if (roomId) saveActionToStorage(roomId, "yolharitasi", parsed); updMsg("Yol haritası hazır — İşlemler panelinden açabilirsiniz."); }
+      catch { setSummaryPanel({ content:rawContent }); updMsg("Yol haritası verisi işlenemedi, ham metin gösteriliyor."); }
     } else if (actionType === "test") {
-      try { const parsed = JSON.parse(rawContent); setTestModal({ data: parsed, loading: false }); if (roomId) saveActionToStorage(roomId, "test", parsed); }
-      catch { setSummaryPanel({ loading: false, content: rawContent }); setTestModal(null); }
+      try { const parsed = JSON.parse(rawContent); setTestModal({ data:parsed }); if (roomId) saveActionToStorage(roomId, "test", parsed); updMsg("Test hazır."); }
+      catch { setSummaryPanel({ content:rawContent }); setTestModal(null); updMsg("Test verisi işlenemedi, ham metin gösteriliyor."); }
     } else if (actionType === "ozet") {
-      setSummaryPanel({ loading: false, content: rawContent });
+      setSummaryPanel({ content: rawContent });
       if (roomId) saveActionToStorage(roomId, "ozet", rawContent);
+      updMsg("Özet hazır.");
     }
   }
 
   function handleAction(actionType) {
     if (!wsRef.current) return;
     const queryMap = { test: "belge içeriği soru cevap", ozet: "belge ana konular özet", yolharitasi: "konular sıra öğrenme" };
-    if (actionType === "test") setTestModal({ data: null, loading: true });
-    else if (actionType === "ozet") setSummaryPanel({ loading: true, content: "" });
+    const msgLabels = { test: "Test oluşturuluyor…", ozet: "Özet çıkarılıyor…", yolharitasi: "Yol haritası hazırlanıyor…" };
+    const msgId = `action_${Date.now()}`;
+    actionMsgIdRef.current = msgId;
+    setMessages((prev) => [...prev, { sender: "system", text: msgLabels[actionType] || "İşlem başlatılıyor…", msgId }]);
     const { provider, model } = parseModel(selectedModel);
     wsRef.current.send(JSON.stringify({ type: "message", message: queryMap[actionType], model, provider, action: actionType, excluded_doc_ids: Array.from(excludedDocs) }));
   }
@@ -812,13 +820,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {testModal?.loading && <LoadingOverlay label="Test oluşturuluyor…" />}
-        {testModal && !testModal.loading && (
-          <TestModal data={testModal.data} onClose={() => setTestModal(null)} />
-        )}
+        {testModal && <TestModal data={testModal.data} onClose={() => setTestModal(null)} />}
         {roadmapData && <RoadmapModal data={roadmapData} onClose={() => setRoadmapData(null)} />}
-        {summaryPanel?.loading && <LoadingOverlay label="Özet çıkarılıyor…" />}
-        {summaryPanel && !summaryPanel.loading && <SummaryModal content={summaryPanel.content} onClose={() => setSummaryPanel(null)} />}
+        {summaryPanel && <SummaryModal content={summaryPanel.content} onClose={() => setSummaryPanel(null)} />}
       </>
     );
   }
@@ -1000,9 +1004,9 @@ export default function DashboardPage() {
                   <div className="panel-section-label"><Icon name="clock" size={12} />Geçmiş</div>
                   {savedActions.map((item, i) => (
                     <button key={i} className="hist-item" onClick={() => {
-                      if (item.type === "test") { setTestModal({ data: item.data, loading: false }); }
+                      if (item.type === "test") { setTestModal({ data:item.data }); }
                       else if (item.type === "yolharitasi") setRoadmapData(item.data);
-                      else setSummaryPanel({ loading: false, content: item.data });
+                      else setSummaryPanel({ content:item.data });
                     }}>
                       <span className="hi-ic"><Icon name={item.type === "test" ? "list-checks" : item.type === "yolharitasi" ? "route" : "file-text"} size={16} /></span>
                       <span className="hi-t">{item.label}</span>
@@ -1037,11 +1041,6 @@ export default function DashboardPage() {
                 {rooms.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
               </select>
             )}
-            <select className="ws-model" value={layout} onChange={(e) => setLayout(e.target.value)} title="Düzen">
-              <option value="klasik">Klasik</option>
-              <option value="komut">Komut</option>
-              <option value="odak">Odak</option>
-            </select>
             <button className="icon-btn" onClick={toggleTheme} title="Tema"><Icon name={theme === "dark" ? "sun" : "moon"} size={18} /></button>
             <button className="icon-btn" onClick={handleLogout} title="Çıkış"><Icon name="log-out" size={18} /></button>
             <Avatar size={30} />
@@ -1053,7 +1052,10 @@ export default function DashboardPage() {
             <>
               <div className="slim-rail">
                 <button className={`rail-btn${odakSlideover === "sources" ? " active" : ""}`} title="Kaynaklar" onClick={() => setOdakSlideover((s) => s === "sources" ? null : "sources")}><Icon name="folder" size={19} /></button>
-                <button className={`rail-btn${odakSlideover === "actions" ? " active" : ""}`} title="İşlemler" onClick={() => setOdakSlideover((s) => s === "actions" ? null : "actions")}><Icon name="sparkles" size={19} /></button>
+                <button className={`rail-btn${odakSlideover === "actions" ? " active" : ""}`} title="İşlemler" onClick={() => setOdakSlideover((s) => s === "actions" ? null : "actions")} style={{ position: "relative" }}>
+                <Icon name="sparkles" size={19} />
+                {savedActions.length > 0 && <span className="rail-badge" />}
+              </button>
                 <div style={{ flex: 1 }} />
                 <button className="rail-btn" title="Kaynak yöneticisi" onClick={() => setShowSourcesFullscreen(true)}><Icon name="maximize" size={18} /></button>
               </div>
@@ -1119,6 +1121,31 @@ export default function DashboardPage() {
                               <span><span className="ab-t">Yol Haritası</span><span className="ab-d">Adım adım öğrenme planı</span></span>
                             </button>
                           </div>
+                          {roadmapData && (
+                            <>
+                              <div className="panel-section-label"><Icon name="route" size={12} />Aktif yol haritası</div>
+                              <button className="roadmap-mini" onClick={() => { setRoadmapData({ ...roadmapData }); setOdakSlideover(null); }}>
+                                <div className="rm-top"><span className="rm-title">{roadmapData.title || "Yol Haritası"}</span><Icon name="arrow-right" size={14} style={{ color: "var(--text-muted)" }} /></div>
+                              </button>
+                            </>
+                          )}
+                          {savedActions.length > 0 && (
+                            <>
+                              <div className="panel-section-label"><Icon name="clock" size={12} />Geçmiş</div>
+                              {savedActions.map((item, i) => (
+                                <button key={i} className="hist-item" onClick={() => {
+                                  if (item.type === "test") setTestModal({ data:item.data });
+                                  else if (item.type === "yolharitasi") setRoadmapData(item.data);
+                                  else setSummaryPanel({ content:item.data });
+                                  setOdakSlideover(null);
+                                }}>
+                                  <span className="hi-ic"><Icon name={item.type === "test" ? "list-checks" : item.type === "yolharitasi" ? "route" : "file-text"} size={16} /></span>
+                                  <span className="hi-t">{item.label}</span>
+                                  <span className="hi-d">{new Date(item.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+                                </button>
+                              ))}
+                            </>
+                          )}
                         </div>
                       )
                     }
@@ -1166,6 +1193,23 @@ export default function DashboardPage() {
                     <button onClick={() => handleAction("ozet")}><Icon name="file-text" size={16} />Özet Çıkar</button>
                     <button onClick={() => handleAction("yolharitasi")}><Icon name="route" size={16} />Yol Haritası</button>
                   </div>
+                  {savedActions.length > 0 && (
+                    <>
+                      <div className="cmd-sep" />
+                      <div className="command-group" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+                        {savedActions.slice(0, 5).map((item, i) => (
+                          <button key={i} className="hist-chip" onClick={() => {
+                            if (item.type === "test") setTestModal({ data:item.data });
+                            else if (item.type === "yolharitasi") setRoadmapData(item.data);
+                            else setSummaryPanel({ content:item.data });
+                          }}>
+                            <Icon name={item.type === "test" ? "list-checks" : item.type === "yolharitasi" ? "route" : "file-text"} size={13} />
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </>

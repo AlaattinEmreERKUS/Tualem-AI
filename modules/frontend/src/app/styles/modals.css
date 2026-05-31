@@ -95,3 +95,22 @@
 .profile-msg { font-size: var(--text-sm); margin-top: var(--sp-3); }
 .profile-msg.ok { color: var(--ok); }
 .profile-msg.err { color: var(--err); }
+
+/* ---- TERCİHLER (düzen + renk) ---- */
+.pref-section { margin-bottom: var(--sp-6); }
+.pref-section:last-child { margin-bottom: 0; }
+.pref-label { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: var(--sp-3); }
+
+.layout-picker { display: flex; gap: var(--sp-3); }
+.lp-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-2) var(--sp-3); border: 1.5px solid var(--border); border-radius: var(--r-md); background: var(--bg-base); cursor: pointer; transition: all var(--dur) var(--ease); }
+.lp-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.lp-btn.active { border-color: var(--accent); background: var(--accent-subtle); }
+.lp-name { font-size: var(--text-xs); font-weight: 600; color: var(--text-secondary); }
+.lp-btn.active .lp-name { color: var(--accent); }
+
+.accent-swatches { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-4); }
+.accent-sw { width: 34px; height: 34px; border-radius: var(--r-full); border: 2.5px solid transparent; cursor: pointer; transition: all var(--dur) var(--ease); flex: 0 0 auto; padding: 0; }
+.accent-sw:hover { transform: scale(1.12); }
+.accent-sw.active { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--text-primary); }
+
+.accent-preview-bar { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); background: var(--bg-sunken); border-radius: var(--r-md); flex-wrap: wrap; border: 1px solid var(--border); }
