@@ -13,6 +13,8 @@ from apps.views import (
     TokenVerifyView,
     LogoutView,
     ProfileView,
+    VerifyEmailView,
+    ResendCodeView,
 )
 
 urlpatterns = [
@@ -25,6 +27,8 @@ urlpatterns = [
 
     path('api/auth/register/', RegisterView.as_view()),
     path('api/auth/login/', LoginView.as_view()),
+    path('api/auth/verify-email/', VerifyEmailView.as_view()),
+    path('api/auth/resend-code/', ResendCodeView.as_view()),
     path('api/auth/refresh/', RefreshTokenView.as_view()),
     path('api/auth/verify/', TokenVerifyView.as_view()),
     path('api/auth/logout/', LogoutView.as_view()),

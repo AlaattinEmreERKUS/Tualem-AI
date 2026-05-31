@@ -1,0 +1,169 @@
+/* ============================================================
+   Tualem AI — Tasarım Token Sistemi
+   Koyu tema öncelikli. Nötr (sıcak gri) zemin + sıcak amber vurgu.
+   Tema: <html data-theme="dark"> | <html data-theme="light">
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* --- Tipografi aileleri --- */
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-sans:  'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* --- Tipografi skalası (ferah, okuma odaklı) --- */
+  --text-micro:  12px;
+  --text-xs:     13px;
+  --text-sm:     14px;
+  --text-base:   15px;
+  --text-md:     16px;
+  --text-lg:     18px;
+  --text-xl:     22px;
+  --text-2xl:    28px;
+  --text-3xl:    34px;
+  --text-display:44px;
+
+  --leading-tight: 1.2;
+  --leading-snug:  1.4;
+  --leading-body:  1.65;
+
+  /* --- Spacing (4px tabanı) --- */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px; --sp-20: 80px;
+
+  /* --- Köşe yarıçapı (8–12px tercih) --- */
+  --r-xs: 6px;  --r-sm: 8px;  --r-md: 10px;  --r-lg: 12px;  --r-xl: 16px;  --r-full: 999px;
+
+  /* --- Geçişler --- */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur:  160ms;
+}
+
+/* ============================================================
+   KOYU TEMA (varsayılan)
+   ============================================================ */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Zeminler — sıcak nötr çok düşük kroma */
+  --bg-base:       oklch(0.178 0.004 70);   /* en derin app zemini */
+  --bg-sunken:     oklch(0.155 0.004 70);   /* girinti / input alanı */
+  --surface:       oklch(0.213 0.005 70);   /* panel / kart */
+  --surface-raised:oklch(0.246 0.006 70);   /* yükseltilmiş kart / popover */
+  --surface-hover: oklch(0.270 0.007 70);
+
+  --border:        oklch(0.300 0.006 70);
+  --border-strong: oklch(0.380 0.008 70);
+
+  --text-primary:  oklch(0.945 0.004 80);
+  --text-secondary:oklch(0.760 0.006 75);
+  --text-muted:    oklch(0.620 0.007 75);
+  --text-faint:    oklch(0.500 0.007 75);
+
+  /* Vurgu — sıcak amber (hue --accent-h ile değiştirilebilir) */
+  --accent-h: 62;
+  --accent:        oklch(0.760 0.130 var(--accent-h));
+  --accent-hover:  oklch(0.800 0.130 var(--accent-h));
+  --accent-text:   oklch(0.200 0.040 var(--accent-h));   /* accent üstündeki metin */
+  --accent-subtle: oklch(0.760 0.130 var(--accent-h) / 0.14);
+  --accent-line:   oklch(0.760 0.130 var(--accent-h) / 0.36);
+
+  /* Semantik durumlar */
+  --ok:        oklch(0.745 0.110 155);
+  --ok-subtle: oklch(0.745 0.110 155 / 0.16);
+  --warn:      oklch(0.800 0.110 80);
+  --warn-subtle:oklch(0.800 0.110 80 / 0.16);
+  --err:       oklch(0.680 0.150 25);
+  --err-subtle:oklch(0.680 0.150 25 / 0.16);
+  --info:      oklch(0.720 0.090 240);
+  --info-subtle:oklch(0.720 0.090 240 / 0.16);
+
+  /* Kaynak rozeti renk paleti (numaralı daireler) */
+  --src-1: oklch(0.72 0.12 250);
+  --src-2: oklch(0.74 0.12 155);
+  --src-3: oklch(0.76 0.13 62);
+  --src-4: oklch(0.70 0.14 320);
+  --src-5: oklch(0.72 0.13 25);
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.30);
+  --shadow-md: 0 4px 16px oklch(0 0 0 / 0.36);
+  --shadow-lg: 0 16px 48px oklch(0 0 0 / 0.48);
+}
+
+/* ============================================================
+   AÇIK TEMA
+   ============================================================ */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-base:       oklch(0.984 0.003 80);
+  --bg-sunken:     oklch(0.955 0.004 80);
+  --surface:       oklch(1 0 0);
+  --surface-raised:oklch(1 0 0);
+  --surface-hover: oklch(0.965 0.004 80);
+
+  --border:        oklch(0.905 0.005 75);
+  --border-strong: oklch(0.840 0.006 75);
+
+  --text-primary:  oklch(0.255 0.008 70);
+  --text-secondary:oklch(0.430 0.008 70);
+  --text-muted:    oklch(0.560 0.008 70);
+  --text-faint:    oklch(0.680 0.007 75);
+
+  --accent:        oklch(0.560 0.140 var(--accent-h));
+  --accent-hover:  oklch(0.510 0.145 var(--accent-h));
+  --accent-text:   oklch(0.995 0.005 var(--accent-h));
+  --accent-subtle: oklch(0.560 0.140 var(--accent-h) / 0.10);
+  --accent-line:   oklch(0.560 0.140 var(--accent-h) / 0.28);
+
+  --ok:        oklch(0.520 0.120 155);
+  --ok-subtle: oklch(0.520 0.120 155 / 0.12);
+  --warn:      oklch(0.620 0.120 70);
+  --warn-subtle:oklch(0.620 0.120 70 / 0.14);
+  --err:       oklch(0.540 0.170 25);
+  --err-subtle:oklch(0.540 0.170 25 / 0.10);
+  --info:      oklch(0.520 0.110 245);
+  --info-subtle:oklch(0.520 0.110 245 / 0.10);
+
+  --src-1: oklch(0.52 0.13 250);
+  --src-2: oklch(0.50 0.12 155);
+  --src-3: oklch(0.56 0.14 52);
+  --src-4: oklch(0.52 0.15 320);
+  --src-5: oklch(0.54 0.16 25);
+
+  --shadow-sm: 0 1px 2px oklch(0.4 0.02 70 / 0.08);
+  --shadow-md: 0 4px 16px oklch(0.4 0.02 70 / 0.10);
+  --shadow-lg: 0 16px 48px oklch(0.4 0.02 70 / 0.16);
+}
+
+/* ============================================================
+   Taban resetler
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+  background: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--accent-subtle); }
+
+h1,h2,h3,h4 { font-family: var(--font-serif); font-weight: 500; line-height: var(--leading-tight); margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-xs); }
+
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+.serif { font-family: var(--font-serif); }
+
+/* İnce kaydırma çubuğu */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }

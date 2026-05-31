@@ -59,7 +59,7 @@ class UserRepository:
             return False
 
     @staticmethod
-    def create(first_name: str, last_name: str, username: str, email: str, password: str):
+    def create(first_name: str, last_name: str, username: str, email: str, password: str, is_active: bool = True):
         try:
             user = CustomUser.objects.create_user(
                 username=username,
@@ -69,7 +69,15 @@ class UserRepository:
                 last_name=last_name,
             )
             user.fullname = f"{first_name} {last_name}".strip()
+            user.is_active = is_active
             user.save()
             return user
         except Exception:
             return None
+
+    @staticmethod
+    def activate(email: str) -> bool:
+        try:
+            return CustomUser.objects.filter(email__iexact=email).update(is_active=True) > 0
+        except Exception:
+            return False
