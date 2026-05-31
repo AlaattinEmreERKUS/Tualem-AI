@@ -140,3 +140,22 @@
 /* İşlemler paneli — devre dışı (boş) durum */
 .actions-locked { opacity: 0.5; pointer-events: none; }
 .actions-hint { display: flex; gap: 9px; align-items: flex-start; padding: var(--sp-3) var(--sp-4); background: var(--warn-subtle); border-radius: var(--r-md); font-size: var(--text-xs); color: var(--warn); line-height: 1.5; margin-bottom: var(--sp-4); }
+
+/* ---- KOMUT düzeni: command-bar ---- */
+.command-bar { flex: 0 0 auto; border-top: 1px solid var(--border); padding: var(--sp-3) var(--sp-5); display: flex; align-items: center; gap: var(--sp-3); background: var(--surface); }
+.command-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.command-bar button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--text-secondary); font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600; cursor: pointer; transition: all var(--dur) var(--ease); }
+.command-bar button:hover { border-color: var(--accent-line); color: var(--accent); background: var(--accent-subtle); }
+
+/* ---- ODAK düzeni: slim-rail, slideover, float-actions ---- */
+.slim-rail { width: 52px; flex: 0 0 auto; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: var(--sp-3) 0; gap: var(--sp-2); }
+.rail-btn { width: 38px; height: 38px; border-radius: var(--r-md); border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all var(--dur) var(--ease); }
+.rail-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+.rail-btn.active { background: var(--accent-subtle); color: var(--accent); }
+
+.slideover { position: absolute; left: 52px; top: 0; bottom: 0; width: 280px; background: var(--surface); border-right: 1px solid var(--border); z-index: 10; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideover-in var(--dur) var(--ease); }
+@keyframes slideover-in { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.float-actions { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-6); border-bottom: 1px solid var(--border); background: var(--surface); }
+.float-actions button { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--bg-base); color: var(--text-secondary); font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600; cursor: pointer; transition: all var(--dur) var(--ease); }
+.float-actions button:hover { border-color: var(--accent-line); color: var(--accent); background: var(--accent-subtle); }

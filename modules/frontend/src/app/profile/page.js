@@ -3,31 +3,34 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAuthHeader, isAuthenticated, removeToken, getToken } from "@/lib/auth";
-import "../auth.css";
+import { getTheme, toggleTheme as toggleThemeFn } from "@/lib/theme";
+import { Icon } from "@/lib/icons";
 
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
 
+  const [theme, setTheme] = useState("dark");
   const [profile, setProfile] = useState({ username: "", email: "", first_name: "", last_name: "", fullname: "", profile_photo: null });
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [firstNameInput, setFirstNameInput] = useState("");
   const [lastNameInput, setLastNameInput] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
-  const [nameMsg, setNameMsg] = useState(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [nameMsg, setNameMsg] = useState(null);
   const [usernameMsg, setUsernameMsg] = useState(null);
   const [passwordMsg, setPasswordMsg] = useState(null);
   const [photoMsg, setPhotoMsg] = useState(null);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push("/login"); return; }
+    setTheme(getTheme());
     fetchProfile();
   }, [router]);
 
@@ -46,6 +49,12 @@ export default function ProfilePage() {
     setLoading(false);
   }
 
+  async function patchProfile(formData) {
+    const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
+    const d = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data: d };
+  }
+
   function handlePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -53,58 +62,40 @@ export default function ProfilePage() {
     uploadPhoto(file);
   }
 
-  async function patchProfile(formData) {
-    const res = await fetch("/api/auth/profile/", { method: "PATCH", headers: getAuthHeader(), body: formData });
-    const d = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data: d };
-  }
-
   async function uploadPhoto(file) {
-    setSaving(true);
-    setPhotoMsg(null);
-    const formData = new FormData();
-    formData.append("profile_photo", file);
+    setSaving(true); setPhotoMsg(null);
+    const fd = new FormData();
+    fd.append("profile_photo", file);
     try {
-      const { ok, status, data } = await patchProfile(formData);
-      if (ok) setPhotoMsg({ ok: true, text: "Fotoğraf güncellendi." });
-      else setPhotoMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
+      const { ok, status, data } = await patchProfile(fd);
+      if (ok) { setPhotoMsg({ ok: true, text: "Fotoğraf güncellendi." }); fetchProfile(); }
+      else setPhotoMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Bekleyin." : data.error || `Hata (${status}).` });
     } catch { setPhotoMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
   async function saveName() {
-    setSaving(true);
-    setNameMsg(null);
-    const formData = new FormData();
-    formData.append("first_name", firstNameInput.trim());
-    formData.append("last_name", lastNameInput.trim());
+    setSaving(true); setNameMsg(null);
+    const fd = new FormData();
+    fd.append("first_name", firstNameInput.trim());
+    fd.append("last_name", lastNameInput.trim());
     try {
-      const { ok, status, data } = await patchProfile(formData);
-      if (ok) {
-        setNameMsg({ ok: true, text: "Ad/soyad güncellendi." });
-        const full = `${firstNameInput.trim()} ${lastNameInput.trim()}`.trim();
-        setProfile((p) => ({ ...p, first_name: firstNameInput.trim(), last_name: lastNameInput.trim(), fullname: full }));
-      } else {
-        setNameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
-      }
+      const { ok, status, data } = await patchProfile(fd);
+      if (ok) { setNameMsg({ ok: true, text: "Ad/soyad güncellendi." }); setProfile((p) => ({ ...p, first_name: firstNameInput.trim(), last_name: lastNameInput.trim() })); }
+      else setNameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Bekleyin." : data.error || `Hata (${status}).` });
     } catch { setNameMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
 
   async function saveUsername() {
     if (!usernameInput.trim()) return;
-    setSaving(true);
-    setUsernameMsg(null);
-    const formData = new FormData();
-    formData.append("username", usernameInput.trim());
+    setSaving(true); setUsernameMsg(null);
+    const fd = new FormData();
+    fd.append("username", usernameInput.trim());
     try {
-      const { ok, status, data } = await patchProfile(formData);
-      if (ok) {
-        setUsernameMsg({ ok: true, text: "Kullanıcı adı güncellendi." });
-        setProfile((p) => ({ ...p, username: usernameInput.trim() }));
-      } else {
-        setUsernameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
-      }
+      const { ok, status, data } = await patchProfile(fd);
+      if (ok) { setUsernameMsg({ ok: true, text: "Kullanıcı adı güncellendi." }); setProfile((p) => ({ ...p, username: usernameInput.trim() })); }
+      else setUsernameMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Bekleyin." : data.error || `Hata (${status}).` });
     } catch { setUsernameMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
@@ -112,19 +103,14 @@ export default function ProfilePage() {
   async function changePassword() {
     if (!oldPassword || !newPassword) { setPasswordMsg({ ok: false, text: "Tüm alanları doldurun." }); return; }
     if (newPassword !== confirmPassword) { setPasswordMsg({ ok: false, text: "Yeni şifreler eşleşmiyor." }); return; }
-    setSaving(true);
-    setPasswordMsg(null);
-    const formData = new FormData();
-    formData.append("old_password", oldPassword);
-    formData.append("new_password", newPassword);
+    setSaving(true); setPasswordMsg(null);
+    const fd = new FormData();
+    fd.append("old_password", oldPassword);
+    fd.append("new_password", newPassword);
     try {
-      const { ok, status, data } = await patchProfile(formData);
-      if (ok) {
-        setPasswordMsg({ ok: true, text: "Şifre güncellendi." });
-        setOldPassword(""); setNewPassword(""); setConfirmPassword("");
-      } else {
-        setPasswordMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Lütfen bekleyin." : data.error || `Hata (${status}).` });
-      }
+      const { ok, status, data } = await patchProfile(fd);
+      if (ok) { setPasswordMsg({ ok: true, text: "Şifre güncellendi." }); setOldPassword(""); setNewPassword(""); setConfirmPassword(""); }
+      else setPasswordMsg({ ok: false, text: status === 429 ? "Çok fazla istek. Bekleyin." : data.error || `Hata (${status}).` });
     } catch { setPasswordMsg({ ok: false, text: "Bağlantı hatası." }); }
     setSaving(false);
   }
@@ -132,89 +118,91 @@ export default function ProfilePage() {
   async function handleLogout() {
     const token = getToken();
     if (token) {
-      try {
-        await fetch("/api/auth/logout/", { method: "POST", headers: { ...getAuthHeader(), "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
-      } catch {}
+      try { await fetch("/api/auth/logout/", { method: "POST", headers: { ...getAuthHeader(), "Content-Type": "application/json" }, body: JSON.stringify({ token }) }); } catch {}
     }
     removeToken();
     router.push("/login");
   }
 
-  const avatarUrl = avatarPreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || "U")}&background=7c3aed&color=fff&size=128`;
+  const initials = (profile.first_name || profile.username || "K").slice(0, 2).toUpperCase();
+  const Msg = ({ m }) => m ? <p className={`profile-msg ${m.ok ? "ok" : "err"}`}>{m.text}</p> : null;
 
-  if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}><p style={{ color: "var(--light-text)" }}>Yükleniyor...</p></div>;
+  if (loading) return (
+    <div className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      <span className="spin" style={{ color: "var(--accent)" }}><Icon name="loader" size={28} /></span>
+    </div>
+  );
 
   return (
-    <div style={{ minHeight: "100vh", padding: "2rem", maxWidth: "640px", margin: "0 auto" }}>
-
-      {/* Geri + Çıkış */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2rem" }}>
-        <button onClick={() => router.push("/dashboard")} style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", padding: "8px 16px", fontSize: "0.85rem" }}>
-          ← Dashboard
-        </button>
-        <button onClick={handleLogout} style={{ background: "rgba(255,0,0,0.2)", border: "none", borderRadius: "8px", color: "var(--light-text)", cursor: "pointer", padding: "8px 16px", fontSize: "0.85rem" }}>
-          Çıkış Yap
-        </button>
-      </div>
-
-      {/* Avatar */}
-      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <img src={avatarUrl} alt="Profil" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", border: "3px solid rgba(124,58,237,0.6)" }} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            style={{ position: "absolute", bottom: 0, right: 0, background: "rgba(124,58,237,0.9)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: "0.75rem" }}
-          >
-            ✏️
-          </button>
+    <div className="app-root">
+      <div className="app-shell">
+        <div className="topnav">
+          <div className="brand"><span className="logo"><Icon name="network" size={24} /></span><span className="wm">Tualem<small>AI</small></span></div>
+          <div className="right">
+            <button className="icon-btn" onClick={() => setTheme(toggleThemeFn())} title="Tema"><Icon name={theme === "dark" ? "sun" : "moon"} size={18} /></button>
+          </div>
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoSelect} />
-        <p style={{ color: "var(--light-text)", fontWeight: 700, fontSize: "1.1rem", marginTop: "0.75rem", marginBottom: 0 }}>{profile.fullname || profile.username}</p>
-        <p style={{ color: "var(--light-muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>{profile.email}</p>
-        {photoMsg && <p style={{ color: photoMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", marginTop: "0.5rem" }}>{photoMsg.text}</p>}
-      </div>
 
-      {/* Ad / Soyad */}
-      <div style={{ background: "var(--panel-bg)", borderRadius: "12px", padding: "1.5rem", marginBottom: "1rem" }}>
-        <h4 style={{ color: "var(--light-text)", margin: "0 0 1rem" }}>Ad ve Soyad</h4>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "0.75rem" }}>
-          <input type="text" className="chat-input" placeholder="Ad" value={firstNameInput} onChange={(e) => setFirstNameInput(e.target.value)} />
-          <input type="text" className="chat-input" placeholder="Soyad" value={lastNameInput} onChange={(e) => setLastNameInput(e.target.value)} />
+        <div className="profile-scroll">
+          <div className="profile-wrap">
+            <button className="btn btn-ghost" onClick={() => router.push("/dashboard")} style={{ marginBottom: "var(--sp-5)", paddingLeft: 0 }}><Icon name="arrow-left" size={16} />Not defterleri</button>
+            <h1>Profil</h1>
+            <p className="pw-sub">Hesap bilgilerinizi ve oturum tercihlerinizi yönetin.</p>
+
+            {/* Avatar */}
+            <div className="avatar-row">
+              <div className="avatar-lg">{avatarPreview ? <img src={avatarPreview} alt="" /> : initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="serif" style={{ fontSize: "var(--text-xl)" }}>{profile.fullname || profile.username}</div>
+                <div className="mono" style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>@{profile.username} · {profile.email}</div>
+                <Msg m={photoMsg} />
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoSelect} />
+              <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()} disabled={saving}><Icon name="camera" size={16} />Avatarı değiştir</button>
+            </div>
+
+            {/* Ad / Soyad */}
+            <div className="profile-card">
+              <h3>Kişisel bilgiler</h3>
+              <div className="form-rows">
+                <div className="form-2col">
+                  <div className="field"><label>Ad</label><div className="input"><input value={firstNameInput} onChange={(e) => setFirstNameInput(e.target.value)} /></div></div>
+                  <div className="field"><label>Soyad</label><div className="input"><input value={lastNameInput} onChange={(e) => setLastNameInput(e.target.value)} /></div></div>
+                </div>
+                <Msg m={nameMsg} />
+                <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={saveName} disabled={saving}><Icon name="check" size={16} />Kaydet</button>
+              </div>
+            </div>
+
+            {/* Kullanıcı adı */}
+            <div className="profile-card">
+              <h3>Kullanıcı adı</h3>
+              <div className="form-rows">
+                <div className="field"><div className="input"><Icon name="at-sign" size={16} /><input value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} /></div></div>
+                <Msg m={usernameMsg} />
+                <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={saveUsername} disabled={saving}><Icon name="check" size={16} />Kaydet</button>
+              </div>
+            </div>
+
+            {/* Şifre */}
+            <div className="profile-card">
+              <h3>Şifre değiştir</h3>
+              <div className="form-rows">
+                <div className="field"><label>Mevcut şifre</label><div className="input"><Icon name="lock" size={16} /><input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="••••••••" /></div></div>
+                <div className="form-2col">
+                  <div className="field"><label>Yeni şifre</label><div className="input"><Icon name="lock" size={16} /><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" /></div></div>
+                  <div className="field"><label>Yeni şifre (tekrar)</label><div className="input"><Icon name="lock" size={16} /><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" /></div></div>
+                </div>
+                <Msg m={passwordMsg} />
+                <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={changePassword} disabled={saving}><Icon name="check" size={16} />Şifreyi güncelle</button>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <button className="btn btn-danger" onClick={handleLogout}><Icon name="log-out" size={16} />Çıkış yap</button>
+            </div>
+          </div>
         </div>
-        {nameMsg && <p style={{ color: nameMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", margin: "0 0 0.5rem" }}>{nameMsg.text}</p>}
-        <button onClick={saveName} disabled={saving} style={{ background: "rgba(124,58,237,0.7)", border: "none", borderRadius: "8px", color: "#fff", cursor: "pointer", padding: "8px 20px", fontWeight: 600 }}>
-          Kaydet
-        </button>
-      </div>
-
-      {/* Kullanıcı adı */}
-      <div style={{ background: "var(--panel-bg)", borderRadius: "12px", padding: "1.5rem", marginBottom: "1rem" }}>
-        <h4 style={{ color: "var(--light-text)", margin: "0 0 1rem" }}>Kullanıcı Adı</h4>
-        <input
-          type="text"
-          className="chat-input"
-          value={usernameInput}
-          onChange={(e) => setUsernameInput(e.target.value)}
-          style={{ width: "100%", marginBottom: "0.75rem" }}
-        />
-        {usernameMsg && <p style={{ color: usernameMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", margin: "0 0 0.5rem" }}>{usernameMsg.text}</p>}
-        <button onClick={saveUsername} disabled={saving} style={{ background: "rgba(124,58,237,0.7)", border: "none", borderRadius: "8px", color: "#fff", cursor: "pointer", padding: "8px 20px", fontWeight: 600 }}>
-          Kaydet
-        </button>
-      </div>
-
-      {/* Şifre değiştir */}
-      <div style={{ background: "var(--panel-bg)", borderRadius: "12px", padding: "1.5rem" }}>
-        <h4 style={{ color: "var(--light-text)", margin: "0 0 1rem" }}>Şifre Değiştir</h4>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <input type="password" className="chat-input" placeholder="Mevcut şifre" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
-          <input type="password" className="chat-input" placeholder="Yeni şifre" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          <input type="password" className="chat-input" placeholder="Yeni şifre (tekrar)" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-        </div>
-        {passwordMsg && <p style={{ color: passwordMsg.ok ? "#4ade80" : "#f87171", fontSize: "0.82rem", margin: "0.5rem 0" }}>{passwordMsg.text}</p>}
-        <button onClick={changePassword} disabled={saving} style={{ marginTop: "0.75rem", background: "rgba(124,58,237,0.7)", border: "none", borderRadius: "8px", color: "#fff", cursor: "pointer", padding: "8px 20px", fontWeight: 600 }}>
-          Şifreyi Güncelle
-        </button>
       </div>
     </div>
   );
