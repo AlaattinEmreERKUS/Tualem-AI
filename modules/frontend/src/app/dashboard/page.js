@@ -534,10 +534,11 @@ export default function DashboardPage() {
   function finishSetup(sourceChoice) {
     setShowRoomSetup(false);
     if (!pendingRoom) return;
-    openRoom(pendingRoom);
+    const room = pendingRoom;
+    openRoom(room);
     setShowHome(false);
     setPendingRoom(null);
-    if (sourceChoice === "file") setTimeout(() => triggerFileUpload(), 300);
+    if (sourceChoice === "file") setTimeout(() => triggerFileUpload(room), 300);
     else if (sourceChoice === "arxiv") setTimeout(() => setShowWebSearch(true), 300);
   }
 
@@ -654,7 +655,8 @@ export default function DashboardPage() {
     }, 3000);
   }
 
-  function triggerFileUpload() {
+  function triggerFileUpload(roomOverride) {
+    const room = roomOverride ?? activeRoom;
     const input = document.createElement("input");
     input.type = "file"; input.multiple = true; input.accept = ".pdf,.txt,.docx,.pptx,.ppt";
     input.onchange = async (e) => {
@@ -664,7 +666,7 @@ export default function DashboardPage() {
       for (const file of files) {
         const formData = new FormData();
         formData.append("file", file);
-        if (activeRoom?.id) formData.append("room_id", activeRoom.id);
+        if (room?.id) formData.append("room_id", room.id);
         try {
           const res = await fetch("/api/documents/", { method: "POST", headers: getAuthHeader(), body: formData });
           if (res.ok) {
