@@ -30,6 +30,17 @@ class UserService:
 
     @staticmethod
     def register(first_name: str, last_name: str, username: str, email: str, password: str) -> dict:
+        inactive = UserRepository.get_inactive_by_email(email)
+        if inactive:
+            # Doğrulanmamış hesap var — yeni kod gönder, yeni kullanıcı oluşturma
+            if not verification.can_resend(email):
+                raise ResendCooldownException()
+            code = verification.generate_code()
+            verification.store_code(email, code)
+            verification.mark_resend(email)
+            send_verification_email(email, code)
+            return {"requires_verification": True, "email": email}
+
         if UserRepository.exists_by_username(username):
             raise UserAlreadyExistsException("kullanıcı adı")
 

@@ -39,6 +39,13 @@ class UserRepository:
             return False
 
     @staticmethod
+    def get_inactive_by_email(email: str):
+        try:
+            return CustomUser.objects.filter(email__iexact=email, is_active=False).first()
+        except Exception:
+            return None
+
+    @staticmethod
     def save(user) -> bool:
         import logging
         try:

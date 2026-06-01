@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { setToken, isAuthenticated } from "@/lib/auth";
-import { getTheme, toggleTheme } from "@/lib/theme";
-import { Icon } from "@/lib/icons";
+import { setToken, isAuthenticated } from "@/library/auth";
+import { getTheme, toggleTheme } from "@/library/theme";
+import { Icon } from "@/library/icons";
 
 function Feature({ icon, title, desc }) {
   return (

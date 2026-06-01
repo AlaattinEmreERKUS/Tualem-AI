@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, getAuthHeader, isAuthenticated, removeToken, getTokenPayload } from "@/lib/auth";
-import { getTheme, toggleTheme as toggleThemeFn } from "@/lib/theme";
-import { Icon } from "@/lib/icons";
-import { getPreference, applyAccent } from "@/lib/preferences";
+import { getToken, getAuthHeader, isAuthenticated, removeToken, getTokenPayload } from "@/library/auth";
+import { getTheme, toggleTheme as toggleThemeFn } from "@/library/theme";
+import { Icon } from "@/library/icons";
+import { getPreference, applyAccent } from "@/library/preferences";
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost";
 
