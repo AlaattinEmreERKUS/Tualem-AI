@@ -320,3 +320,11 @@ docker exec tualem_chat_module python -m pytest chat/tests.py -v
 - Gerçek JWT token üretimi ve doğrulaması
 - Gerçek PostgreSQL operasyonları (DB'ye yazılır, DB'den okunur)
 - Mock edilenler: SMTP, Celery task execution, Neo4j, LLM API çağrıları, Redis token blacklist
+
+---
+
+| Bölüm | Gerçekleştiren | Github Hesabı |
+|-------------------|-----------|---------|
+| `Frontend` | Tuğba KARACA | https://github.com/TugbaKaraca |
+| `Backend` | Ali Eren BALLI | https://github.com/AliErenBalli |
+| `Yapay Zeka ` | Alaattin Emre ERKUŞ | https://github.com/AlaattinEmreERKUS |
