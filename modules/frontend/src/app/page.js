@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { isAuthenticated } from "@/lib/auth";
-import { getTheme, toggleTheme as toggleThemeFn } from "@/lib/theme";
-import { Icon } from "@/lib/icons";
+import { isAuthenticated } from "@/library/auth";
+import { getTheme, toggleTheme as toggleThemeFn } from "@/library/theme";
+import { Icon } from "@/library/icons";
 
 const FEATURES = [
   { icon: "file-text", title: "Belge Yükle", desc: "PDF, DOCX, PPTX dosyalarınızı yükleyin; sistem otomatik parçalar ve gömer." },

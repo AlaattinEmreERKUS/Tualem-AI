@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthHeader, isAuthenticated, removeToken, getToken } from "@/lib/auth";
-import { getTheme, toggleTheme as toggleThemeFn } from "@/lib/theme";
-import { Icon } from "@/lib/icons";
-import { ACCENT_PALETTES, LAYOUT_OPTIONS, getPreference, setPreference, applyAccent } from "@/lib/preferences";
+import { getAuthHeader, isAuthenticated, removeToken, getToken } from "@/library/auth";
+import { getTheme, toggleTheme as toggleThemeFn } from "@/library/theme";
+import { Icon } from "@/library/icons";
+import { ACCENT_PALETTES, LAYOUT_OPTIONS, getPreference, setPreference, applyAccent } from "@/library/preferences";
 
 function LayoutMockup({ id, large = false }) {
   const h = large ? 160 : 68;
