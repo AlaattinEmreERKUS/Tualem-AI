@@ -2,7 +2,7 @@
 
 Graph RAG tabanlı doküman soru-cevap sistemi. Yüklenen dokümanlar PostgreSQL/pgvector ve Neo4j'de saklanır; Celery pipeline'ı ile chunk'lanıp embed edilir. Chat modülü üzerinden WebSocket bağlantısıyla gerçek zamanlı RAG sorgusu yapılabilir.
 
-<img width="1915" height="950" alt="image" src="https://github.com/user-attachments/assets/1f4bb7c1-a364-4cbe-ae76-de9071298c11" />
+<img width="1515" height="865" alt="image" src="https://github.com/user-attachments/assets/af573df0-9885-4795-ade7-c214ffa56d3a" />
 
 ---
 
