@@ -1,14 +1,12 @@
 $venv = "$PSScriptRoot\.venv\Scripts\python.exe"
 $root = $PSScriptRoot
 
-# Django servisleri
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "& '$venv' '$root\modules\user_module\manage.py' runserver 8001"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "& '$venv' '$root\modules\graph_module\manage.py' runserver 8002"
 
 Write-Host "user_module  -> http://localhost:8001"
 Write-Host "graph_module -> http://localhost:8002"
 
-# Nginx bul: once PATH, sonra yaygin kurulum yerleri
 $nginx = $null
 
 $candidate = (Get-Command nginx -ErrorAction SilentlyContinue)
