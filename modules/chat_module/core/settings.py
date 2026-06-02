@@ -51,18 +51,27 @@ else:
         }
     }
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [{
-                "host": os.getenv('REDIS_HOST', 'redis'),
-                "port": int(os.getenv('REDIS_PORT', 6379)),
-                "password": os.getenv('REDIS_PASSWORD', '') or None,
-            }],
+_REDIS_URL = os.getenv('REDIS_URL', '')
+if _REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {"hosts": [_REDIS_URL]},
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [{
+                    "host": os.getenv('REDIS_HOST', 'redis'),
+                    "port": int(os.getenv('REDIS_PORT', '6379') or '6379'),
+                    "password": os.getenv('REDIS_PASSWORD', '') or None,
+                }],
+            },
+        },
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
