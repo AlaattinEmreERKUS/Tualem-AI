@@ -2,6 +2,8 @@
 
 Graph RAG tabanlı doküman soru-cevap sistemi. Yüklenen dokümanlar PostgreSQL/pgvector ve Neo4j'de saklanır; Celery pipeline'ı ile chunk'lanıp embed edilir. Chat modülü üzerinden WebSocket bağlantısıyla gerçek zamanlı RAG sorgusu yapılabilir.
 
+<img width="1515" height="865" alt="image" src="https://github.com/user-attachments/assets/af573df0-9885-4795-ade7-c214ffa56d3a" />
+
 ---
 
 ## Mimari
@@ -318,3 +320,11 @@ docker exec tualem_chat_module python -m pytest chat/tests.py -v
 - Gerçek JWT token üretimi ve doğrulaması
 - Gerçek PostgreSQL operasyonları (DB'ye yazılır, DB'den okunur)
 - Mock edilenler: SMTP, Celery task execution, Neo4j, LLM API çağrıları, Redis token blacklist
+
+---
+
+| Bölüm | Gerçekleştiren | Github Hesabı |
+|-------------------|-----------|---------|
+| `Frontend` | Tuğba KARACA | https://github.com/TugbaKaraca |
+| `Backend` | Ali Eren BALLI | https://github.com/AliErenBalli |
+| `Yapay Zeka ` | Alaattin Emre ERKUŞ | https://github.com/AlaattinEmreERKUS |
