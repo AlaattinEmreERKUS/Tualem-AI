@@ -34,16 +34,22 @@ ROOT_URLCONF = 'core.urls'
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'tualem_db'),
-        'USER': os.getenv('POSTGRES_USER', 'tualem_emre'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'tualem_1234'),
-        'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+import dj_database_url as _dj_db_url
+
+_DATABASE_URL = os.getenv('DATABASE_URL', '')
+if _DATABASE_URL:
+    DATABASES = {'default': _dj_db_url.parse(_DATABASE_URL)}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'tualem_db'),
+            'USER': os.getenv('POSTGRES_USER', 'tualem_emre'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'tualem_1234'),
+            'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        }
     }
-}
 
 CHANNEL_LAYERS = {
     'default': {
