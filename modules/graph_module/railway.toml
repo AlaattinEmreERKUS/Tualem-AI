@@ -3,5 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "modules/graph_module/Dockerfile"
 
 [deploy]
+startCommand = "gunicorn core.wsgi:application --bind 0.0.0.0:8002 --workers 2"
+preDeployCommand = "python manage.py migrate --noinput"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5

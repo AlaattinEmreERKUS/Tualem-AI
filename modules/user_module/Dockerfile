@@ -15,4 +15,4 @@ COPY shared/ ./shared/
 
 EXPOSE 8001
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn user_project.wsgi:application --bind 0.0.0.0:8001 --workers 2"]
+CMD ["gunicorn", "user_project.wsgi:application", "--bind", "0.0.0.0:8001", "--workers", "2"]

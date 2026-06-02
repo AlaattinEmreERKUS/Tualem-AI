@@ -3,5 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "modules/user_module/Dockerfile"
 
 [deploy]
+startCommand = "gunicorn user_project.wsgi:application --bind 0.0.0.0:8001 --workers 2"
+preDeployCommand = "python manage.py migrate --noinput"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5

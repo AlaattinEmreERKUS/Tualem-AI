@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [("apps", "0000_pgvector_extension")]
+    dependencies = [("graph", "0000_pgvector_extension")]
 
     operations = [
         migrations.CreateModel(
