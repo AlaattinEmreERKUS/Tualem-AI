@@ -3,6 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "modules/frontend/Dockerfile"
 
 [deploy]
-startCommand = "npm start -- -p $PORT"
+startCommand = "sh -c 'next start -p ${PORT:-3000}'"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
