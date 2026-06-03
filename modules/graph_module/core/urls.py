@@ -1,7 +1,12 @@
-from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from apps.views import DocumentListView
+from apps.views import (
+    DocumentListView,
+    DocumentDetailView,
+    DocumentTaskStatusView,
+    LiteratureSearchView,
+    QueryView,
+)
 
 
 def health_check(request):
@@ -10,7 +15,9 @@ def health_check(request):
 
 urlpatterns = [
     path('health', health_check, name='health'),
-    path('admin/', admin.site.urls),
-    path('api/graph/documents/', DocumentListView.as_view(), name='documents'),
+    path('api/documents/', DocumentListView.as_view(), name='document-list'),
+    path('api/documents/search/', LiteratureSearchView.as_view(), name='document-search'),
+    path('api/documents/<str:document_id>/', DocumentDetailView.as_view(), name='document-detail'),
+    path('api/documents/<str:document_id>/status/', DocumentTaskStatusView.as_view(), name='document-status'),
+    path('api/query/', QueryView.as_view(), name='query'),
 ]
-
