@@ -49,7 +49,11 @@ class GraphService:
 
     @staticmethod
     def delete_document(document_id, user_id):
+        import logging
+        _log = logging.getLogger('graph_module')
         document = GraphRepository.get_document_by_id(document_id, user_id)
+        _log.info("[delete] doc=%s req_user=%r stored_user=%r found=%s",
+                  document_id, str(user_id), document.get('user_id') if document else None, bool(document))
         if not document:
             raise DocumentAccessDeniedException()
 
