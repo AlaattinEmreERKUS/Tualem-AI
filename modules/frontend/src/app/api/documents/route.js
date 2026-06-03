@@ -1,11 +1,16 @@
 export async function GET(request) {
   const graphModuleUrl = process.env.GRAPH_MODULE_URL || 'http://graph_module.railway.internal:8080';
   const authHeader = request.headers.get('authorization');
-  
+  const { searchParams } = new URL(request.url);
+  const roomId = searchParams.get('room_id');
+  const backendUrl = roomId
+    ? `${graphModuleUrl}/api/documents/?room_id=${roomId}`
+    : `${graphModuleUrl}/api/documents/`;
+
   try {
-    console.log(`[GetDocuments] Calling ${graphModuleUrl}/api/documents/`);
-    
-    const response = await fetch(`${graphModuleUrl}/api/documents/`, {
+    console.log(`[GetDocuments] Calling ${backendUrl}`);
+
+    const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
         ...(authHeader && { 'Authorization': authHeader }),
