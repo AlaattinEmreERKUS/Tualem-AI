@@ -4,6 +4,8 @@ export async function GET(request, { params }) {
   const { id } = params;
   
   try {
+    console.log(`[GetRoom] Calling ${chatModuleUrl}/api/chat/rooms/${id}/`);
+    
     const response = await fetch(`${chatModuleUrl}/api/chat/rooms/${id}/`, {
       method: 'GET',
       headers: {
@@ -11,16 +13,27 @@ export async function GET(request, { params }) {
       },
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[GetRoom] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Get chat room API error:', error);
+    console.error('[GetRoom] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -34,6 +47,8 @@ export async function PATCH(request, { params }) {
   try {
     const body = await request.json();
     
+    console.log(`[UpdateRoom] Calling ${chatModuleUrl}/api/chat/rooms/${id}/`);
+    
     const response = await fetch(`${chatModuleUrl}/api/chat/rooms/${id}/`, {
       method: 'PATCH',
       headers: {
@@ -43,16 +58,27 @@ export async function PATCH(request, { params }) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[UpdateRoom] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Update chat room API error:', error);
+    console.error('[UpdateRoom] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -64,6 +90,8 @@ export async function DELETE(request, { params }) {
   const { id } = params;
   
   try {
+    console.log(`[DeleteRoom] Calling ${chatModuleUrl}/api/chat/rooms/${id}/`);
+    
     const response = await fetch(`${chatModuleUrl}/api/chat/rooms/${id}/`, {
       method: 'DELETE',
       headers: {
@@ -71,16 +99,27 @@ export async function DELETE(request, { params }) {
       },
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[DeleteRoom] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Delete chat room API error:', error);
+    console.error('[DeleteRoom] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
