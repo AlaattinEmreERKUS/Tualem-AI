@@ -121,7 +121,7 @@ class RegisterView(APIView):
                 email=data["email"],
                 password=data["password"],
             )
-            return Response(result, status=status.HTTP_201_CREATED)
+            return Response(result, status=status.HTTP_200_OK)
         except UserAlreadyExistsException as e:
             return Response({"error": e.message}, status=status.HTTP_409_CONFLICT)
         except UserBaseException as e:

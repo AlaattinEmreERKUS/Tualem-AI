@@ -30,16 +30,16 @@ class UserService:
 
     @staticmethod
     def register(first_name: str, last_name: str, username: str, email: str, password: str) -> dict:
-        inactive = UserRepository.get_inactive_by_email(email)
-        if inactive:
-            # Doğrulanmamış hesap var — yeni kod gönder, yeni kullanıcı oluşturma
-            if not verification.can_resend(email):
-                raise ResendCooldownException()
-            code = verification.generate_code()
-            verification.store_code(email, code)
-            verification.mark_resend(email)
-            send_verification_email(email, code)
-            return {"requires_verification": True, "email": email}
+        # --- E-posta doğrulama (domain hazır olunca aç) ---
+        # inactive = UserRepository.get_inactive_by_email(email)
+        # if inactive:
+        #     if not verification.can_resend(email):
+        #         raise ResendCooldownException()
+        #     code = verification.generate_code()
+        #     verification.store_code(email, code)
+        #     verification.mark_resend(email)
+        #     send_verification_email(email, code)
+        #     return {"requires_verification": True, "email": email}
 
         if UserRepository.exists_by_username(username):
             raise UserAlreadyExistsException("kullanıcı adı")
@@ -47,17 +47,20 @@ class UserService:
         if UserRepository.exists_by_email(email):
             raise UserAlreadyExistsException("e-posta")
 
-        # Doğrulanana dek pasif hesap — token verilmez
-        user = UserRepository.create(first_name, last_name, username, email, password, is_active=False)
+        # E-posta doğrulama kapalıyken direkt aktif oluştur
+        user = UserRepository.create(first_name, last_name, username, email, password, is_active=True)
         if not user:
             raise InvalidCredentialsException()
 
-        code = verification.generate_code()
-        verification.store_code(email, code)
-        verification.mark_resend(email)
-        send_verification_email(email, code)
+        # --- Doğrulama kodu gönderimi (domain hazır olunca aç) ---
+        # code = verification.generate_code()
+        # verification.store_code(email, code)
+        # verification.mark_resend(email)
+        # send_verification_email(email, code)
+        # return {"requires_verification": True, "email": email}
 
-        return {"requires_verification": True, "email": email}
+        update_last_login(None, user)
+        return {"user": _serialize_user(user), **generate_token_pair(user)}
 
     @staticmethod
     def verify_email(email: str, code: str) -> dict:
