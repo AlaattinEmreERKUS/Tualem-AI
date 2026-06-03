@@ -10,8 +10,9 @@ from shared.jwt_utils import decode_token, TokenExpiredError, InvalidTokenError
 from shared.token_blacklist import is_blacklisted
 from .models import ChatRoom, ChatMessage
 
-GRAPH_MODULE_URL = "http://graph_module:8002"
-_GRAPH_HEADERS_BASE = {"Host": "localhost"}
+import os
+GRAPH_MODULE_URL = os.getenv("GRAPH_MODULE_URL", "http://graph_module.railway.internal:8080")
+_GRAPH_HEADERS_BASE = {}
 
 _USER_FRIENDLY_ERRORS = {
     404: "Kaynaklarınızda bu konuyla ilgili bilgi bulunamadı.",
