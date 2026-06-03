@@ -38,8 +38,12 @@ class GraphService:
             GraphRepository.update_document_status(document.id, 'failed')
             raise TaskCreationException()
 
+        import base64
+        file.seek(0)
+        file_b64 = base64.b64encode(file.read()).decode("utf-8")
+
         from apps.tasks import run_graph_pipeline
-        run_graph_pipeline.delay(str(document.id), str(task.id))
+        run_graph_pipeline.delay(str(document.id), str(task.id), file_b64, file_type, file_name)
 
         return {"document_id": str(document.id), "task_id": str(task.id)}
 

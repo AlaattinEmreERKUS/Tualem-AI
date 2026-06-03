@@ -76,6 +76,9 @@ class DocumentDetailView(APIView):
             return Response({"error": e.message}, status=status.HTTP_403_FORBIDDEN)
         except GraphBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("delete_document unexpected error | doc=%s | %s", document_id, e)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DocumentTaskStatusView(APIView):

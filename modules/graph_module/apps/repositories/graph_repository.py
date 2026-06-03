@@ -9,8 +9,7 @@ class GraphRepository:
         try:
             qs = Document.objects.filter(user_id=str(user_id))
             if room_id:
-                from django.db.models import Q
-                qs = qs.filter(Q(room_id=str(room_id)) | Q(room_id__isnull=True))
+                qs = qs.filter(room_id=str(room_id))
             return qs.values()
         except Exception:
             return None

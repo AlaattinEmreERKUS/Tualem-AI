@@ -77,16 +77,11 @@ def _extract_text(file_path: str, file_type: str) -> str:
 
 
 @shared_task(bind=True, max_retries=3)
-def run_graph_pipeline(self, document_id: str, task_id: str):
-    from apps.models import Document
+def run_graph_pipeline(self, document_id: str, task_id: str, file_b64: str = None, file_type: str = None, file_name: str = None):
+    import base64
+    import tempfile
 
     logger.info("[pipeline] start | doc=%s task=%s", document_id, task_id)
-
-    try:
-        document = Document.objects.get(id=document_id)
-    except Document.DoesNotExist:
-        logger.error("[pipeline] Document not found | doc=%s", document_id)
-        return
 
     GraphRepository.update_document_status(document_id, "processing")
 
@@ -98,11 +93,21 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
         GraphRepository.update_document_status(document_id, "failed")
         return
 
+    tmp_path = None
     try:
         GraphRepository.update_task_step(task_id, "text_extraction")
-        logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s", document_id, document.file.name, document.file_type)
+        logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s", document_id, file_name, file_type)
         try:
-            text = _extract_text(document.file.path, document.file_type)
+            if file_b64:
+                suffix = os.path.splitext(file_name or "")[1] or ".bin"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(base64.b64decode(file_b64))
+                    tmp_path = tmp.name
+                text = _extract_text(tmp_path, file_type)
+            else:
+                from apps.models import Document
+                document = Document.objects.get(id=document_id)
+                text = _extract_text(document.file.path, document.file_type)
             logger.info("[pipeline] text_extraction ok | doc=%s | chars=%d", document_id, len(text))
         except Exception as e:
             logger.error("[pipeline] text_extraction failed | doc=%s | error=%s", document_id, e)
@@ -165,3 +170,5 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
 
     finally:
         neo4j.close()
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
