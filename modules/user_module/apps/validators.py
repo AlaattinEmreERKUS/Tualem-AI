@@ -12,7 +12,7 @@ class CustomPasswordValidator:
         if not any(char.isdigit() for char in password):
             raise ValidationError("Şifre en az bir rakam içermelidir.")
 
-        special_characters = "[@_!#$%^&*()<>?/\|}{~:]"
+        special_characters = r"[@_!#$%^&*()<>?/\|}{~:]"
         if not any(char in special_characters for char in password):
             raise ValidationError("Şifre en az bir özel karakter içermelidir.")
 
