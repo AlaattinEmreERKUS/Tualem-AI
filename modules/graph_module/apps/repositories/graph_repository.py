@@ -17,7 +17,7 @@ class GraphRepository:
     @staticmethod
     def get_document_by_id(document_id, user_id):
         try:
-            return Document.objects.filter(id=document_id, user_id=user_id).values().first()
+            return Document.objects.filter(id=document_id, user_id=str(user_id)).values().first()
         except Exception:
             return None
 
@@ -47,7 +47,7 @@ class GraphRepository:
     @staticmethod
     def delete_document(document_id, user_id):
         try:
-            count, _ = Document.objects.filter(id=document_id, user_id=user_id).delete()
+            count, _ = Document.objects.filter(id=document_id, user_id=str(user_id)).delete()
             return count > 0
         except Exception:
             return False
