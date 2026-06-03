@@ -8,7 +8,6 @@ from apps.exceptions.user_exceptions import (
     InvalidCredentialsException,
     UserAlreadyExistsException,
     InvalidTokenException,
-    EmailNotVerifiedException,
     InvalidVerificationCodeException,
     ResendCooldownException,
     UserBaseException,
@@ -97,11 +96,13 @@ class UserService:
     def login(identifier: str, password: str) -> dict:
         user = authenticate(username=identifier, password=password)
         if not user:
-            # Pasif (doğrulanmamış) hesap mı kontrol et — net mesaj için
             existing = UserRepository.get_by_username(identifier) or UserRepository.get_by_email(identifier)
             if existing and not existing.is_active and existing.check_password(password):
-                raise EmailNotVerifiedException()
-            raise InvalidCredentialsException()
+                UserRepository.activate(existing.email)
+                existing.is_active = True
+                user = existing
+            else:
+                raise InvalidCredentialsException()
 
         update_last_login(None, user)
         return {"user": _serialize_user(user), **generate_token_pair(user)}

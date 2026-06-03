@@ -28,7 +28,7 @@ from apps.exceptions.user_exceptions import (
     UserAlreadyExistsException,
     TokenExpiredException,
     InvalidTokenException,
-    EmailNotVerifiedException,
+
     InvalidVerificationCodeException,
     ResendCooldownException,
 )
@@ -146,8 +146,6 @@ class LoginView(APIView):
                 password=data["password"],
             )
             return Response(result, status=status.HTTP_200_OK)
-        except EmailNotVerifiedException as e:
-            return Response({"error": e.message, "requires_verification": True}, status=status.HTTP_403_FORBIDDEN)
         except InvalidCredentialsException as e:
             return Response({"error": e.message}, status=status.HTTP_401_UNAUTHORIZED)
         except UserBaseException as e:
