@@ -588,7 +588,8 @@ export default function DashboardPage() {
   }
 
   async function deleteRoom(id) {
-    if (!id || id === "undefined") return;
+    console.log("[deleteRoom] called with id=", id, typeof id);
+    if (!id || id === "undefined") { console.warn("[deleteRoom] blocked undefined id"); return; }
     await fetch(`/api/chat/rooms/${id}/`, { method: "DELETE", headers: getAuthHeader() });
     setRooms((prev) => prev.filter((r) => r.id !== id));
     if (activeRoom?.id === id) { setActiveRoom(null); setShowHome(true); wsRef.current?.close(); }
