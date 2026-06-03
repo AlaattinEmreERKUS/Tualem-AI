@@ -1,6 +1,9 @@
 import os
+import logging
 import secrets
 import redis
+
+logger = logging.getLogger("user_module")
 
 _client = None
 _CODE_TTL = 600  # 10 dakika
@@ -27,21 +30,39 @@ def generate_code() -> str:
 
 
 def store_code(email: str, code: str) -> None:
-    _get_client().setex(_code_key(email), _CODE_TTL, code)
+    try:
+        _get_client().setex(_code_key(email), _CODE_TTL, code)
+    except redis.RedisError as e:
+        logger.error("Redis store_code failed | email=%s | error=%s", email, e)
+        raise
 
 
 def get_code(email: str) -> str | None:
-    val = _get_client().get(_code_key(email))
-    return val.decode() if val else None
+    try:
+        val = _get_client().get(_code_key(email))
+        return val.decode() if val else None
+    except redis.RedisError as e:
+        logger.error("Redis get_code failed | email=%s | error=%s", email, e)
+        return None
 
 
 def clear_code(email: str) -> None:
-    _get_client().delete(_code_key(email))
+    try:
+        _get_client().delete(_code_key(email))
+    except redis.RedisError as e:
+        logger.warning("Redis clear_code failed | email=%s | error=%s", email, e)
 
 
 def can_resend(email: str) -> bool:
-    return not _get_client().exists(_cooldown_key(email))
+    try:
+        return not _get_client().exists(_cooldown_key(email))
+    except redis.RedisError as e:
+        logger.warning("Redis can_resend failed, allowing resend | email=%s | error=%s", email, e)
+        return True  # Fail open — Redis yoksa cooldown'u engelleme
 
 
 def mark_resend(email: str) -> None:
-    _get_client().setex(_cooldown_key(email), _RESEND_COOLDOWN, "1")
+    try:
+        _get_client().setex(_cooldown_key(email), _RESEND_COOLDOWN, "1")
+    except redis.RedisError as e:
+        logger.warning("Redis mark_resend failed | email=%s | error=%s", email, e)

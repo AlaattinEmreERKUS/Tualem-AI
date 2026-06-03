@@ -126,6 +126,9 @@ class RegisterView(APIView):
             return Response({"error": e.message}, status=status.HTTP_409_CONFLICT)
         except UserBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error("register unexpected error: %s", e, exc_info=True)
+            return Response({"error": "Kayıt işlemi başarısız. Lütfen tekrar deneyin."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginView(APIView):
