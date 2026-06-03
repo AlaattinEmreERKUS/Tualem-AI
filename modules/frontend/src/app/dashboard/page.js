@@ -571,10 +571,14 @@ export default function DashboardPage() {
       }
     };
     ws.onclose = (e) => {
+      console.warn("[WS] closed | code=" + e.code + " reason=" + e.reason);
       if (e.code === 4001 || e.code === 4002 || e.code === 4003) return;
-      setMessages((prev) => [...prev, { sender: "system", text: "Bağlantı kesildi. Odaya tekrar girin." }]);
+      setMessages((prev) => [...prev, { sender: "system", text: `Bağlantı kesildi (${e.code}). Odaya tekrar girin.` }]);
     };
-    ws.onerror = () => setMessages((prev) => [...prev, { sender: "system", text: "WebSocket bağlantı hatası." }]);
+    ws.onerror = (e) => {
+      console.error("[WS] error", e);
+      setMessages((prev) => [...prev, { sender: "system", text: `WebSocket bağlantı hatası — ${WS_BASE}/ws/graph/chat/${room.id}/` }]);
+    };
     wsRef.current = ws;
   }
 

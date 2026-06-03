@@ -35,9 +35,19 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         self.authenticated = False
         self.user_id = None
         self.token = None
-        await self.accept()
+        headers = dict(self.scope.get('headers', []))
+        origin = headers.get(b'origin', b'').decode()
+        host = headers.get(b'host', b'').decode()
+        logger.info("[WS] connect | room=%s | host=%s | origin=%s", self.room_id, host, origin)
+        try:
+            await self.accept()
+            logger.info("[WS] accepted | room=%s", self.room_id)
+        except Exception as exc:
+            logger.error("[WS] accept failed | room=%s | error=%s", self.room_id, exc)
+            raise
 
     async def disconnect(self, close_code):
+        logger.info("[WS] disconnect | room=%s | code=%s | user=%s", self.room_id, close_code, self.user_id)
         if self.authenticated:
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
@@ -71,16 +81,19 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         token = data.get('token', '')
         try:
             payload = decode_token(token, settings.JWT_SECRET)
-        except (TokenExpiredError, InvalidTokenError):
+        except (TokenExpiredError, InvalidTokenError) as exc:
+            logger.warning("[WS] auth failed: %s | room=%s", type(exc).__name__, self.room_id)
             await self.close(code=4001)
             return
 
         if payload.get('type') != 'access':
+            logger.warning("[WS] auth failed: token type=%s | room=%s", payload.get('type'), self.room_id)
             await self.close(code=4001)
             return
 
         jti = payload.get('jti')
         if jti and is_blacklisted(jti):
+            logger.warning("[WS] auth failed: blacklisted jti | room=%s", self.room_id)
             await self.close(code=4001)
             return
 
@@ -88,7 +101,13 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         self.token = token
         self.authenticated = True
 
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        logger.info("[WS] auth_ok | room=%s | user=%s", self.room_id, self.user_id)
+        try:
+            await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        except Exception as exc:
+            logger.error("[WS] channel_layer.group_add failed | room=%s | error=%s", self.room_id, exc)
+            await self.close(code=4000)
+            return
         await self.send(text_data=json.dumps({'type': 'auth_ok'}))
 
     async def handle_chat_message(self, data):
