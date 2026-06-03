@@ -3,6 +3,8 @@ export async function GET(request) {
   const authHeader = request.headers.get('authorization');
   
   try {
+    console.log(`[GetDocuments] Calling ${graphModuleUrl}/api/documents/`);
+    
     const response = await fetch(`${graphModuleUrl}/api/documents/`, {
       method: 'GET',
       headers: {
@@ -10,16 +12,27 @@ export async function GET(request) {
       },
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[GetDocuments] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Get documents API error:', error);
+    console.error('[GetDocuments] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -32,6 +45,8 @@ export async function POST(request) {
   try {
     const body = await request.formData();
     
+    console.log(`[CreateDocument] Calling ${graphModuleUrl}/api/documents/`);
+    
     const response = await fetch(`${graphModuleUrl}/api/documents/`, {
       method: 'POST',
       headers: {
@@ -40,16 +55,27 @@ export async function POST(request) {
       body: body,
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[CreateDocument] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Create document API error:', error);
+    console.error('[CreateDocument] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

@@ -4,6 +4,8 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
+    console.log(`[VerifyEmail] Calling ${userModuleUrl}/api/auth/verify-email/`);
+    
     const response = await fetch(`${userModuleUrl}/api/auth/verify-email/`, {
       method: 'POST',
       headers: {
@@ -12,16 +14,27 @@ export async function POST(request) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`[VerifyEmail] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: `Backend error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Verify email API error:', error);
+    console.error('[VerifyEmail] API error:', error.message);
     return new Response(
-      JSON.stringify({ error: 'Sunucuya bağlanılamadı.' }),
+      JSON.stringify({ error: `Sunucuya bağlanılamadı: ${error.message}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
