@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY modules/user_module/ .
 COPY shared/ ./shared/
 
-EXPOSE 8001
+EXPOSE ${PORT:-8001}
 
-CMD ["gunicorn", "user_project.wsgi:application", "--bind", "0.0.0.0:8001", "--workers", "2"]
+CMD sh -c "gunicorn user_project.wsgi:application --bind 0.0.0.0:${PORT:-8001} --workers 2"
+

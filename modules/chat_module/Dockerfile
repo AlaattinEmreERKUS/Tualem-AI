@@ -15,6 +15,7 @@ COPY shared/ ./shared/
 
 ENV PYTHONPATH=/app
 
-EXPOSE 8003
+EXPOSE ${PORT:-8003}
 
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8003", "core.asgi:application"]
+CMD sh -c "daphne -b 0.0.0.0 -p ${PORT:-8003} core.asgi:application"
+

@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY modules/graph_module/ .
 COPY shared/ ./shared/
 
-EXPOSE 8002
+EXPOSE ${PORT:-8002}
 
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8002", "--workers", "2"]
+CMD sh -c "gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8002} --workers 2"
+

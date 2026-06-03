@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from apps.views import (
     login_view,
     register_view,
@@ -17,7 +18,13 @@ from apps.views import (
     ResendCodeView,
 )
 
+
+def health_check(request):
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path('health', health_check, name='health'),
     path('admin/', admin.site.urls),
 
     path('login/', login_view, name='login'),
@@ -34,3 +41,4 @@ urlpatterns = [
     path('api/auth/logout/', LogoutView.as_view()),
     path('api/auth/profile/', ProfileView.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

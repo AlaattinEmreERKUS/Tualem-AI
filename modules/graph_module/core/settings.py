@@ -22,6 +22,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') + ['graph_module']
+ALLOWED_HOSTS.append('healthcheck.railway.app')
 
 
 # Application definition
