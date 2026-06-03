@@ -1,20 +1,15 @@
 from django.contrib import admin
 from django.urls import path, include
-from apps.views import (
-    DocumentListView,
-    DocumentDetailView,
-    DocumentTaskStatusView,
-    DocumentChunkListView,
-    QueryView,
-    LiteratureSearchView,
-)
+from django.http import JsonResponse
+
+
+def health_check(request):
+    return JsonResponse({"status": "ok"})
+
 
 urlpatterns = [
+    path('health', health_check, name='health'),
     path('admin/', admin.site.urls),
-    path('api/documents/', DocumentListView.as_view()),
-    path('api/documents/search/', LiteratureSearchView.as_view()),
-    path('api/documents/<uuid:document_id>/', DocumentDetailView.as_view()),
-    path('api/documents/<uuid:document_id>/status/', DocumentTaskStatusView.as_view()),
-    path('api/documents/<uuid:document_id>/chunks/', DocumentChunkListView.as_view()),
-    path('api/query/', QueryView.as_view()),
+    path('api/graph/', include('graph.urls')),
 ]
+
