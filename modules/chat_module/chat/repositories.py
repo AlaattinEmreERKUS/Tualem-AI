@@ -4,7 +4,7 @@ class ChatRepository:
     
     @staticmethod
     def get_rooms_by_user(user_id):
-        return ChatRoom.objects.filter(user_id=user_id).order_by('-created_at')
+        return ChatRoom.objects.filter(user_id=int(user_id)).order_by('-created_at')
 
     @staticmethod
     def get_room_by_id(room_id):
@@ -19,7 +19,7 @@ class ChatRepository:
 
     @staticmethod
     def create_room(title, user_id):
-        return ChatRoom.objects.create(title=title, user_id=user_id)
+        return ChatRoom.objects.create(title=title, user_id=int(user_id))
 
     @staticmethod
     def create_message(room_obj, role, content, sources=None):
@@ -32,10 +32,10 @@ class ChatRepository:
 
     @staticmethod
     def delete_room(room_id, user_id) -> bool:
-        deleted, _ = ChatRoom.objects.filter(id=room_id, user_id=user_id).delete()
+        deleted, _ = ChatRoom.objects.filter(id=room_id, user_id=int(user_id)).delete()
         return deleted > 0
 
     @staticmethod
     def update_room_title(room_id, user_id, title) -> bool:
-        updated = ChatRoom.objects.filter(id=room_id, user_id=user_id).update(title=title)
+        updated = ChatRoom.objects.filter(id=room_id, user_id=int(user_id)).update(title=title)
         return updated > 0
