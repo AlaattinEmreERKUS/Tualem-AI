@@ -1,20 +1,28 @@
 import logging
-from django.core.mail import send_mail
+import resend
 from django.conf import settings
 
 logger = logging.getLogger("user_module")
 
 
 def send_verification_email(email: str, code: str) -> None:
-    subject = "Tualem AI — E-posta Doğrulama Kodu"
-    message = (
-        f"Tualem AI hesabınızı doğrulamak için kodunuz: {code}\n\n"
-        f"Bu kod 10 dakika geçerlidir. Talebi siz yapmadıysanız bu e-postayı yok sayın."
-    )
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@tualem.ai")
+    api_key = getattr(settings, "RESEND_API_KEY", "")
+    if not api_key:
+        logger.warning("RESEND_API_KEY eksik. Kod (dev): %s | email=%s", code, email)
+        return
+
+    resend.api_key = api_key
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "Tualem AI <noreply@tualem.ai>")
     try:
-        send_mail(subject, message, from_email, [email], fail_silently=False)
+        resend.Emails.send({
+            "from": from_email,
+            "to": [email],
+            "subject": "Tualem AI — E-posta Doğrulama Kodu",
+            "text": (
+                f"Tualem AI hesabınızı doğrulamak için kodunuz: {code}\n\n"
+                f"Bu kod 10 dakika geçerlidir. Talebi siz yapmadıysanız bu e-postayı yok sayın."
+            ),
+        })
         logger.info("Doğrulama e-postası gönderildi | email=%s", email)
     except Exception as e:
-        # Console backend / SMTP hatası — kodu log'a yaz (dev fallback)
         logger.warning("E-posta gönderilemedi (%s). Kod (dev): %s | email=%s", e, code, email)
