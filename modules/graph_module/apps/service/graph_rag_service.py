@@ -140,17 +140,28 @@ class GraphRAGService:
 
     @staticmethod
     def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None, excluded_doc_ids: list = None) -> dict:
+        logger.info("[rag] query | user=%s room=%s model=%s/%s action=%s", user_id, room_id, provider, model, action or "chat")
         k = 10 if action else top_k
-        chunks = RAGRepository.vector_search(question, user_id, k, room_id=room_id, excluded_doc_ids=excluded_doc_ids or [])
+        try:
+            chunks = RAGRepository.vector_search(question, user_id, k, room_id=room_id, excluded_doc_ids=excluded_doc_ids or [])
+        except Exception as e:
+            logger.error("[rag] vector_search failed | user=%s | error=%s", user_id, e)
+            raise RAGQueryException(f"Vektör arama hatası: {e}") from e
+        logger.info("[rag] vector_search | chunks=%d", len(chunks) if chunks else 0)
         if not chunks:
             raise NoRelevantChunksException()
 
         chunk_ids = [str(c["id"]) for c in chunks]
-        graph_triples = RAGRepository.get_graph_context(chunk_ids)
+        try:
+            graph_triples = RAGRepository.get_graph_context(chunk_ids)
+        except Exception as e:
+            logger.warning("[rag] get_graph_context failed (devam ediliyor) | error=%s", e)
+            graph_triples = []
         context = _build_context(chunks, graph_triples)
+        logger.info("[rag] context built | chars=%d triples=%d", len(context), len(graph_triples))
 
-        # Aksiyon varsa özel prompt, yoksa normal RAG
         if action and action in ACTION_PROMPTS:
+            logger.info("[rag] LLM call (action=%s) | provider=%s model=%s", action, provider, model)
             raw = _call_llm(ACTION_PROMPTS[action], {"context": context}, provider, model)
             if action in ("test", "yolharitasi"):
                 import json as _json
@@ -167,6 +178,7 @@ class GraphRAGService:
             else:
                 answer = raw
         else:
+            logger.info("[rag] LLM call (chat) | provider=%s model=%s", provider, model)
             answer = _call_llm(RAG_PROMPT, {"context": context, "question": question}, provider, model)
 
         from apps.models import Document

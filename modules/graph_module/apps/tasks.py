@@ -80,30 +80,48 @@ def _extract_text(file_path: str, file_type: str) -> str:
 def run_graph_pipeline(self, document_id: str, task_id: str):
     from apps.models import Document
 
+    logger.info("[pipeline] start | doc=%s task=%s", document_id, task_id)
+
     try:
         document = Document.objects.get(id=document_id)
     except Document.DoesNotExist:
+        logger.error("[pipeline] Document not found | doc=%s", document_id)
         return
 
     GraphRepository.update_document_status(document_id, "processing")
-    neo4j = _get_neo4j_client()
+
+    try:
+        neo4j = _get_neo4j_client()
+    except Exception as e:
+        logger.error("[pipeline] Neo4j bağlantısı kurulamadı | doc=%s | error=%s", document_id, e)
+        GraphRepository.update_task_step(task_id, "failed", error_message=str(e))
+        GraphRepository.update_document_status(document_id, "failed")
+        return
 
     try:
         GraphRepository.update_task_step(task_id, "text_extraction")
+        logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s", document_id, document.file.name, document.file_type)
         try:
             text = _extract_text(document.file.path, document.file_type)
+            logger.info("[pipeline] text_extraction ok | doc=%s | chars=%d", document_id, len(text))
         except Exception as e:
+            logger.error("[pipeline] text_extraction failed | doc=%s | error=%s", document_id, e)
             raise PipelineException("text_extraction", str(e)) from e
 
         GraphRepository.update_task_step(task_id, "chunking")
+        logger.info("[pipeline] chunking | doc=%s", document_id)
         chunks = neo4j.chunk_text(text)
         if not chunks:
+            logger.error("[pipeline] chunking failed: no chunks | doc=%s", document_id)
             raise PipelineException("chunking", "Metin parçalanamadı.")
         chunk_ids = GraphRepository.create_chunks(document_id, chunks)
         if not chunk_ids:
+            logger.error("[pipeline] chunking failed: db save | doc=%s", document_id)
             raise PipelineException("chunking", "Chunk'lar kaydedilemedi.")
+        logger.info("[pipeline] chunking ok | doc=%s | chunks=%d", document_id, len(chunks))
 
         GraphRepository.update_task_step(task_id, "entity_extraction")
+        logger.info("[pipeline] entity_extraction | doc=%s", document_id)
         for chunk_id, chunk_text in zip(chunk_ids, chunks):
             try:
                 graph_data = neo4j.extract_graph_data(chunk_text)
@@ -112,27 +130,38 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
                     entities=graph_data.get("entities", []),
                     relationships=graph_data.get("relationships", []),
                 )
-            except EntityExtractionException:
+            except EntityExtractionException as e:
+                logger.warning("[pipeline] entity_extraction skip chunk=%s | %s", chunk_id, e)
                 neo4j.create_chunk_node(chunk_id)
                 continue
 
         GraphRepository.update_task_step(task_id, "neo4j_write")
+        logger.info("[pipeline] neo4j_write ok | doc=%s", document_id)
 
         GraphRepository.update_task_step(task_id, "vector_write")
+        logger.info("[pipeline] vector_write | doc=%s", document_id)
         from apps.vector_store import VectorStore
         vs = VectorStore()
         chunk_data = [{"id": cid, "content": txt} for cid, txt in zip(chunk_ids, chunks)]
         vs.embed_chunks_bulk(chunk_data)
+        logger.info("[pipeline] vector_write ok | doc=%s", document_id)
 
         GraphRepository.update_task_step(task_id, "completed")
         GraphRepository.update_document_status(document_id, "completed")
+        logger.info("[pipeline] COMPLETED | doc=%s", document_id)
 
     except PipelineException as e:
+        logger.error("[pipeline] FAILED at step=%s | doc=%s | error=%s", e.step, document_id, e.message)
         GraphRepository.update_task_step(task_id, "failed", error_message=e.message)
         GraphRepository.update_document_status(document_id, "failed")
 
         if e.step not in PERMANENT_FAILURE_STEPS:
             raise self.retry(exc=e, countdown=60)
+
+    except Exception as e:
+        logger.exception("[pipeline] UNEXPECTED ERROR | doc=%s | error=%s", document_id, e)
+        GraphRepository.update_task_step(task_id, "failed", error_message=str(e))
+        GraphRepository.update_document_status(document_id, "failed")
 
     finally:
         neo4j.close()
