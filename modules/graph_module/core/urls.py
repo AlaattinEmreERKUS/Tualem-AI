@@ -1,6 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 from django.http import JsonResponse
+from apps.views import DocumentListView
 
 
 def health_check(request):
@@ -10,6 +11,6 @@ def health_check(request):
 urlpatterns = [
     path('health', health_check, name='health'),
     path('admin/', admin.site.urls),
-    path('api/graph/', include('graph.urls')),
+    path('api/graph/documents/', DocumentListView.as_view(), name='documents'),
 ]
 
