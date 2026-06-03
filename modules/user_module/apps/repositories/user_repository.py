@@ -27,14 +27,14 @@ class UserRepository:
     @staticmethod
     def exists_by_username(username: str) -> bool:
         try:
-            return CustomUser.objects.filter(username=username).exists()
+            return CustomUser.objects.filter(username=username, is_active=True).exists()
         except Exception:
             return False
 
     @staticmethod
     def exists_by_email(email: str) -> bool:
         try:
-            return CustomUser.objects.filter(email=email).exists()
+            return CustomUser.objects.filter(email=email, is_active=True).exists()
         except Exception:
             return False
 
