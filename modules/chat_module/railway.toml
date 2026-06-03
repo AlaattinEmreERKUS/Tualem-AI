@@ -3,7 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "modules/chat_module/Dockerfile"
 
 [deploy]
-startCommand = "daphne -b 0.0.0.0 -p ${PORT:-8003} core.asgi:application"
 preDeployCommand = "python manage.py migrate --noinput"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
