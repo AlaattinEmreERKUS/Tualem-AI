@@ -16,12 +16,6 @@ class RegisterSerializer(serializers.Serializer):
         if data["password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Şifreler eşleşmiyor."})
 
-        if CustomUser.objects.filter(username=data["username"]).exists():
-            raise serializers.ValidationError({"username": "Bu kullanıcı adı zaten kullanımda."})
-
-        if CustomUser.objects.filter(email=data["email"]).exists():
-            raise serializers.ValidationError({"email": "Bu e-posta adresi zaten kullanımda."})
-
         try:
             validate_password(data["password"])
         except ValidationError as e:
