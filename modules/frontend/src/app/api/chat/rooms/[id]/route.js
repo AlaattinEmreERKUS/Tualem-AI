@@ -100,12 +100,13 @@ export async function DELETE(request, { params }) {
     });
 
     const text = await response.text();
-    
+    console.log(`[DeleteRoom] status=${response.status} body=${text.substring(0, 300)}`);
+
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
-      console.error(`[DeleteRoom] Backend returned non-JSON (status ${response.status}):`, text.substring(0, 500));
+      console.error(`[DeleteRoom] non-JSON (status ${response.status}):`, text.substring(0, 500));
       return new Response(
         JSON.stringify({ error: `Backend error: ${response.status}` }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
