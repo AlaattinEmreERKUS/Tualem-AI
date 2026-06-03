@@ -1,7 +1,7 @@
 export async function GET(request, { params }) {
   const chatModuleUrl = process.env.CHAT_MODULE_URL || 'http://chat_module.railway.internal:8080';
   const authHeader = request.headers.get('authorization');
-  const { id } = params;
+  const { id } = await params;
   
   try {
     console.log(`[GetRoom] Calling ${chatModuleUrl}/api/chat/rooms/${id}/`);
@@ -42,7 +42,7 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   const chatModuleUrl = process.env.CHAT_MODULE_URL || 'http://chat_module.railway.internal:8080';
   const authHeader = request.headers.get('authorization');
-  const { id } = params;
+  const { id } = await params;
   
   try {
     const body = await request.json();
@@ -87,7 +87,7 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   const chatModuleUrl = process.env.CHAT_MODULE_URL || 'http://chat_module.railway.internal:8080';
   const authHeader = request.headers.get('authorization');
-  const { id } = params;
+  const { id } = await params;
   
   try {
     console.log(`[DeleteRoom] Calling ${chatModuleUrl}/api/chat/rooms/${id}/`);

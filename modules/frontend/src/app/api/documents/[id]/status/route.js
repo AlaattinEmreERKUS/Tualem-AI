@@ -1,7 +1,7 @@
 export async function GET(request, { params }) {
   const graphModuleUrl = process.env.GRAPH_MODULE_URL || 'http://graph_module.railway.internal:8080';
   const authHeader = request.headers.get('authorization');
-  const { id } = params;
+  const { id } = await params;
   
   try {
     console.log(`[GetDocumentStatus] Calling ${graphModuleUrl}/api/documents/${id}/status/`);
