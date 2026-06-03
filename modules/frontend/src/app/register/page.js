@@ -149,8 +149,14 @@ export default function RegisterPage() {
         setError(msg);
         return;
       }
-      // Backend doğrulama istiyor → verify ekranı
-      setMode("verify");
+      if (data.access_token) {
+        setToken(data.access_token);
+        router.push("/dashboard");
+        return;
+      }
+      if (data.requires_verification) {
+        setMode("verify");
+      }
     } catch {
       setError("Sunucuya bağlanılamadı.");
     } finally {
