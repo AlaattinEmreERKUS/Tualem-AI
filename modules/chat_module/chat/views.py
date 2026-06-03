@@ -32,7 +32,11 @@ class ChatRoomViewSet(viewsets.ViewSet):
         return Response(ChatRoomSerializer(room).data)
 
     def destroy(self, request, pk=None):
-        deleted = ChatRepository.delete_room(room_id=pk, user_id=request.user.id)
+        try:
+            pk_int = int(pk)
+        except (TypeError, ValueError):
+            return Response({"error": "Geçersiz oda ID."}, status=status.HTTP_400_BAD_REQUEST)
+        deleted = ChatRepository.delete_room(room_id=pk_int, user_id=request.user.id)
         if not deleted:
             return Response({"error": "Oda bulunamadı veya erişim yetkiniz yok."}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -444,8 +444,13 @@ export default function DashboardPage() {
   async function fetchRooms() {
     try {
       const res = await fetch("/api/chat/rooms/", { headers: getAuthHeader() });
-      if (res.ok) { const d = await res.json(); setRooms(d.results ?? d); }
-    } catch {}
+      if (res.ok) {
+        const d = await res.json();
+        const list = d.results ?? d;
+        console.log("[fetchRooms] raw:", JSON.stringify(list).slice(0, 300));
+        setRooms(Array.isArray(list) ? list : []);
+      }
+    } catch (e) { console.error("[fetchRooms] error:", e); }
   }
   async function fetchDocuments(roomId = null) {
     try {
@@ -583,6 +588,7 @@ export default function DashboardPage() {
   }
 
   async function deleteRoom(id) {
+    if (!id || id === "undefined") return;
     await fetch(`/api/chat/rooms/${id}/`, { method: "DELETE", headers: getAuthHeader() });
     setRooms((prev) => prev.filter((r) => r.id !== id));
     if (activeRoom?.id === id) { setActiveRoom(null); setShowHome(true); wsRef.current?.close(); }
