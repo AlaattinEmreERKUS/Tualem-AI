@@ -357,6 +357,47 @@ class ChatRepositoryTest(TestCase):
         self.assertFalse(ChatRepository.user_can_access_room(None, 1))
 
 
+# ── 6b. Oda erişim endpoint'i (servisler arası doğrulama) ────────────────────
+
+class RoomAccessEndpointTest(TestCase):
+    """
+    Senaryo: graph_module, room_id sahipliğini bu endpoint'ten doğrular.
+    Sahip → 200, yabancı → 403, olmayan oda → 403.
+    """
+
+    def setUp(self):
+        self.bl = mock.patch("chat.authentication.is_blacklisted", return_value=False)
+        self.bl.start()
+        self.client1 = _authed_client(user_id=1, email="user1@chat.com")
+        self.client2 = _authed_client(user_id=2, email="user2@chat.com")
+        res = self.client1.post(ROOMS_URL, {"title": "Erişim Test Odası"}, format="json")
+        self.room_id = res.json()["id"]
+
+    def tearDown(self):
+        self.bl.stop()
+
+    def _access_url(self, pk):
+        return f"/api/chat/rooms/{pk}/access/"
+
+    def test_sahip_200_allowed_true(self):
+        res = self.client1.get(self._access_url(self.room_id))
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["allowed"])
+
+    def test_sahip_olmayan_403(self):
+        res = self.client2.get(self._access_url(self.room_id))
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(res.json()["allowed"])
+
+    def test_olmayan_oda_403(self):
+        res = self.client1.get(self._access_url(99999))
+        self.assertEqual(res.status_code, 403)
+
+    def test_token_olmadan_erisilemez(self):
+        res = APIClient().get(self._access_url(self.room_id))
+        self.assertIn(res.status_code, [401, 403])
+
+
 # ── 7. WebSocket oda erişim kontrolü ─────────────────────────────────────────
 
 @override_settings(CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}})

@@ -90,6 +90,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      CHAT_MODULE_URL: http://chat_module:8003
       PYTHONPATH: /app:/app/modules
     ports:
       - "8002:8002"

@@ -52,8 +52,9 @@ def _pdf_file(name="test.pdf"):
 
 # Her testte tekrarlanan patch'leri merkezi tutuyoruz
 _ALWAYS_MOCK = [
-    mock.patch("shared.token_blacklist.is_blacklisted", return_value=False),
+    mock.patch("apps.utils.authentication.is_blacklisted", return_value=False),
     mock.patch("apps.tasks.run_graph_pipeline.delay"),  # Celery tetiklenmez
+    mock.patch("apps.views.user_can_access_room", return_value=True),
 ]
 
 
@@ -141,7 +142,7 @@ class DocumentUploadScenarioTest(TestCase):
 
     def test_celery_pipeline_tetiklenir(self):
         with mock.patch("apps.tasks.run_graph_pipeline.delay") as m_delay:
-            with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False):
+            with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False):
                 res = self.client.post("/api/documents/", {"file": _pdf_file()}, format="multipart")
         self.assertEqual(res.status_code, 201)
         m_delay.assert_called_once()
@@ -290,15 +291,15 @@ class DocumentTaskStatusTest(TestCase):
 class QueryScenarioTest(TestCase):
     def setUp(self):
         self.client = _authed_client(user_id=1)
-        self.rag_result = {"answer": "LLM cevabı", "sources": [], "action_result": None}
+        self.rag_result = {"answer": "LLM cevabı", "action_type": "", "provider": "groq", "sources": []}
 
     def test_soru_eksikse_400(self):
-        with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False):
+        with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False):
             res = self.client.post("/api/query/", {}, format="json")
         self.assertEqual(res.status_code, 400)
 
     def test_gecerli_soru_200_doner(self):
-        with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False), \
+        with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False), \
              mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
                         return_value=self.rag_result):
             res = self.client.post("/api/query/", {"question": "Makine öğrenmesi nedir?"}, format="json")
@@ -307,7 +308,7 @@ class QueryScenarioTest(TestCase):
 
     def test_ilgili_chunk_yoksa_404(self):
         from apps.exceptions.graph_exceptions import NoRelevantChunksException
-        with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False), \
+        with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False), \
              mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
                         side_effect=NoRelevantChunksException()):
             res = self.client.post("/api/query/", {"question": "Boş veritabanında soru"}, format="json")
@@ -315,7 +316,7 @@ class QueryScenarioTest(TestCase):
 
     def test_rate_limit_hatasi_503(self):
         from apps.exceptions.graph_exceptions import RAGQueryException
-        with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False), \
+        with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False), \
              mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
                         side_effect=RAGQueryException("rate limit exceeded")):
             res = self.client.post("/api/query/", {"question": "Soru"}, format="json")
@@ -323,7 +324,7 @@ class QueryScenarioTest(TestCase):
 
     def test_excluded_doc_ids_serializerdan_gecer(self):
         doc_id = str(uuid.uuid4())
-        with mock.patch("shared.token_blacklist.is_blacklisted", return_value=False), \
+        with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False), \
              mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
                         return_value=self.rag_result) as m:
             self.client.post("/api/query/",
@@ -338,7 +339,7 @@ class QueryScenarioTest(TestCase):
 class LiteratureSearchTest(TestCase):
     def setUp(self):
         self.client = _authed_client(user_id=1)
-        self.bl_patch = mock.patch("shared.token_blacklist.is_blacklisted", return_value=False)
+        self.bl_patch = mock.patch("apps.utils.authentication.is_blacklisted", return_value=False)
         self.bl_patch.start()
 
     def tearDown(self):
@@ -352,6 +353,7 @@ class LiteratureSearchTest(TestCase):
         mock_results = [{
             "document_id": str(uuid.uuid4()), "task_id": str(uuid.uuid4()),
             "title": "Test Paper", "authors": ["Yazar"], "arxiv_id": "2401.00001",
+            "summary": "Özet", "published": None,
         }]
         with mock.patch("apps.tasks.run_graph_pipeline.delay"), \
              mock.patch("apps.service.literature_search_service.LiteratureSearchService.search_and_import",
@@ -367,3 +369,116 @@ class LiteratureSearchTest(TestCase):
             res = self.client.post("/api/documents/search/",
                                    {"topic": "xyzabc999", "max_results": 5}, format="json")
         self.assertEqual(res.status_code, 404)
+
+
+# ── 8. Oda erişim doğrulaması (servisler arası) ───────────────────────────────
+
+class RoomAccessUtilTest(TestCase):
+    """room_access util — httpx mock, TTL cache, fail-closed davranışı."""
+
+    def setUp(self):
+        from apps.utils import room_access
+        room_access._cache.clear()
+
+    def test_200_ise_true_ve_cache(self):
+        from apps.utils.room_access import user_can_access_room
+        with mock.patch("apps.utils.room_access.httpx.get",
+                        return_value=mock.Mock(status_code=200)) as m:
+            self.assertTrue(user_can_access_room("1", "5", "token"))
+            self.assertTrue(user_can_access_room("1", "5", "token"))
+        self.assertEqual(m.call_count, 1)
+
+    def test_403_ise_false(self):
+        from apps.utils.room_access import user_can_access_room
+        with mock.patch("apps.utils.room_access.httpx.get",
+                        return_value=mock.Mock(status_code=403)):
+            self.assertFalse(user_can_access_room("1", "5", "token"))
+
+    def test_ulasilamazsa_false_ve_cache_yok(self):
+        import httpx as _httpx
+        from apps.utils import room_access
+        with mock.patch("apps.utils.room_access.httpx.get",
+                        side_effect=_httpx.RequestError("bağlantı yok")):
+            self.assertFalse(room_access.user_can_access_room("1", "5", "token"))
+        self.assertEqual(len(room_access._cache), 0)
+
+    def test_farkli_kullanici_ayri_cache(self):
+        from apps.utils.room_access import user_can_access_room
+        with mock.patch("apps.utils.room_access.httpx.get",
+                        return_value=mock.Mock(status_code=200)) as m:
+            user_can_access_room("1", "5", "token1")
+            user_can_access_room("2", "5", "token2")
+        self.assertEqual(m.call_count, 2)
+
+
+class QueryRoomAccessTest(TestCase):
+    """room_id'li sorgular chat_module'den sahiplik doğrulaması gerektirir."""
+
+    def setUp(self):
+        self.client = _authed_client(user_id=1)
+        self.patches = [mock.patch("apps.utils.authentication.is_blacklisted", return_value=False)]
+        _start_patches(self.patches)
+        self.rag_result = {"answer": "Cevap", "action_type": "", "provider": "groq", "sources": []}
+
+    def tearDown(self):
+        _stop_patches(self.patches)
+
+    def test_erisim_yoksa_403(self):
+        with mock.patch("apps.views.user_can_access_room", return_value=False):
+            res = self.client.post("/api/query/",
+                                   {"question": "Soru", "room_id": "5"}, format="json")
+        self.assertEqual(res.status_code, 403)
+
+    def test_erisim_varsa_sorgu_calisir(self):
+        with mock.patch("apps.views.user_can_access_room", return_value=True) as m, \
+             mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
+                        return_value=self.rag_result):
+            res = self.client.post("/api/query/",
+                                   {"question": "Soru", "room_id": "5"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        args, _ = m.call_args
+        self.assertEqual(str(args[0]), "1")
+        self.assertEqual(str(args[1]), "5")
+
+    def test_room_id_yoksa_kontrol_yapilmaz(self):
+        with mock.patch("apps.views.user_can_access_room") as m, \
+             mock.patch("apps.service.graph_rag_service.GraphRAGService.query",
+                        return_value=self.rag_result):
+            res = self.client.post("/api/query/", {"question": "Soru"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        m.assert_not_called()
+
+
+class UploadRoomAccessTest(TestCase):
+    """room_id'li doküman yükleme sahiplik doğrulaması gerektirir."""
+
+    def setUp(self):
+        self.client = _authed_client(user_id=1)
+        self.patches = [
+            mock.patch("apps.utils.authentication.is_blacklisted", return_value=False),
+            mock.patch("apps.tasks.run_graph_pipeline.delay"),
+        ]
+        _start_patches(self.patches)
+
+    def tearDown(self):
+        _stop_patches(self.patches)
+
+    def test_erisim_yoksa_403_ve_dokuman_olusmaz(self):
+        with mock.patch("apps.views.user_can_access_room", return_value=False):
+            res = self.client.post("/api/documents/",
+                                   {"file": _pdf_file(), "room_id": "5"}, format="multipart")
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(Document.objects.count(), 0)
+
+    def test_erisim_varsa_yukleme_201(self):
+        with mock.patch("apps.views.user_can_access_room", return_value=True):
+            res = self.client.post("/api/documents/",
+                                   {"file": _pdf_file(), "room_id": "5"}, format="multipart")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Document.objects.filter(room_id="5").count(), 1)
+
+    def test_room_id_olmadan_kontrol_yapilmaz(self):
+        with mock.patch("apps.views.user_can_access_room") as m:
+            res = self.client.post("/api/documents/", {"file": _pdf_file()}, format="multipart")
+        self.assertEqual(res.status_code, 201)
+        m.assert_not_called()

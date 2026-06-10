@@ -7,6 +7,7 @@ from rest_framework import status
 
 from apps.service.graph_service import GraphService
 from apps.service.graph_rag_service import GraphRAGService
+from apps.utils.room_access import user_can_access_room
 from apps.serializers.graph_serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
@@ -47,6 +48,8 @@ class DocumentListView(APIView):
 
         file = serializer.validated_data['file']
         room_id = request.data.get('room_id') or None
+        if room_id and not user_can_access_room(request.user.id, room_id, request.auth):
+            return Response({"error": "Bu odaya erişim yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
         try:
             result = GraphService.upload_document(
                 user_id=request.user.id,
@@ -148,6 +151,9 @@ class QueryView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
+        room_id = data.get("room_id") or None
+        if room_id and not user_can_access_room(request.user.id, room_id, request.auth):
+            return Response({"error": "Bu odaya erişim yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
         try:
             result = GraphRAGService.query(
                 user_id=str(request.user.id),
@@ -156,7 +162,7 @@ class QueryView(APIView):
                 provider=data.get("provider", ""),
                 model=data.get("model", ""),
                 action=data.get("action", ""),
-                room_id=data.get("room_id") or None,
+                room_id=room_id,
                 excluded_doc_ids=data.get("excluded_doc_ids") or [],
             )
             return Response(QueryResponseSerializer(result).data)

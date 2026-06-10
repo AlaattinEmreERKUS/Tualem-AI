@@ -1,5 +1,6 @@
 import logging
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .repositories import ChatRepository
@@ -72,6 +73,15 @@ class ChatRoomViewSet(viewsets.ViewSet):
         except Exception as e:
             logger.exception("[rooms] delete error | %s", e)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    @action(detail=True, methods=['get'])
+    def access(self, request, pk=None):
+        allowed = ChatRepository.user_can_access_room(pk, request.user.id)
+        if allowed:
+            return Response({"allowed": True}, status=status.HTTP_200_OK)
+        logger.warning("[rooms] access denied | room=%s user=%s", pk, request.user.id)
+        return Response({"allowed": False}, status=status.HTTP_403_FORBIDDEN)
 
 
 class ChatMessageViewSet(viewsets.ViewSet):
