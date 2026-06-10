@@ -7,6 +7,13 @@ class ChatRepository:
         return ChatRoom.objects.filter(user_id=int(user_id)).order_by('-created_at')
 
     @staticmethod
+    def user_can_access_room(room_id, user_id) -> bool:
+        try:
+            return ChatRoom.objects.filter(id=int(room_id), user_id=int(user_id)).exists()
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
     def get_room_by_id(room_id):
         try:
             return ChatRoom.objects.get(id=room_id)

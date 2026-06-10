@@ -8,8 +8,9 @@ Geri kalan her şey gerçek: JWT üretimi/doğrulaması, PostgreSQL DB
   operasyonları, ChatRoom/ChatMessage kayıtları, kullanıcı izolasyonu.
 """
 
+import json
 from unittest import mock
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.conf import settings
 from rest_framework.test import APIClient
 
@@ -74,7 +75,7 @@ class ChatRoomLifecycleTest(TestCase):
 
     def setUp(self):
         self.client = _authed_client(user_id=1)
-        self.bl = mock.patch("shared.token_blacklist.is_blacklisted", return_value=False)
+        self.bl = mock.patch("chat.authentication.is_blacklisted", return_value=False)
         self.bl.start()
 
     def tearDown(self):
@@ -126,7 +127,7 @@ class UserIsolationTest(TestCase):
     """
 
     def setUp(self):
-        self.bl = mock.patch("shared.token_blacklist.is_blacklisted", return_value=False)
+        self.bl = mock.patch("chat.authentication.is_blacklisted", return_value=False)
         self.bl.start()
         self.client1 = _authed_client(user_id=1, email="user1@chat.com")
         self.client2 = _authed_client(user_id=2, email="user2@chat.com")
@@ -189,7 +190,7 @@ class MessageFlowTest(TestCase):
     """
 
     def setUp(self):
-        self.bl = mock.patch("shared.token_blacklist.is_blacklisted", return_value=False)
+        self.bl = mock.patch("chat.authentication.is_blacklisted", return_value=False)
         self.bl.start()
         self.client = _authed_client(user_id=1)
         res = self.client.post(ROOMS_URL, {"title": "Mesaj Test Odası"}, format="json")
@@ -228,7 +229,7 @@ class MessageFlowTest(TestCase):
 class ChatRoomValidationTest(TestCase):
     def setUp(self):
         self.client = _authed_client(user_id=1)
-        self.bl = mock.patch("shared.token_blacklist.is_blacklisted", return_value=False)
+        self.bl = mock.patch("chat.authentication.is_blacklisted", return_value=False)
         self.bl.start()
 
     def tearDown(self):
@@ -337,3 +338,79 @@ class ChatRepositoryTest(TestCase):
         pk = self.room.pk
         ChatRepository.delete_room(room_id=pk, user_id=1)
         self.assertEqual(ChatMessage.objects.filter(room_id=pk).count(), 0)
+
+    def test_sahip_odaya_erisebilir(self):
+        from chat.repositories import ChatRepository
+        self.assertTrue(ChatRepository.user_can_access_room(self.room.pk, 1))
+
+    def test_sahip_olmayan_odaya_erisemez(self):
+        from chat.repositories import ChatRepository
+        self.assertFalse(ChatRepository.user_can_access_room(self.room.pk, 999))
+
+    def test_olmayan_oda_erisim_false(self):
+        from chat.repositories import ChatRepository
+        self.assertFalse(ChatRepository.user_can_access_room(99999, 1))
+
+    def test_gecersiz_oda_id_erisim_false(self):
+        from chat.repositories import ChatRepository
+        self.assertFalse(ChatRepository.user_can_access_room("abc", 1))
+        self.assertFalse(ChatRepository.user_can_access_room(None, 1))
+
+
+# ── 7. WebSocket oda erişim kontrolü ─────────────────────────────────────────
+
+@override_settings(CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}})
+class WebSocketRoomAccessTest(TransactionTestCase):
+    """
+    Senaryo: WS bağlantısında JWT geçerli olsa bile kullanıcı yalnızca
+    kendi odasına auth olabilir. Yabancı oda → 4004 ile kapanır.
+    """
+
+    def setUp(self):
+        self.bl = mock.patch("chat.consumers.is_blacklisted", return_value=False)
+        self.bl.start()
+        self.room = ChatRoom.objects.create(user_id=1, title="WS Test Odası")
+
+    def tearDown(self):
+        self.bl.stop()
+
+    def _communicator(self, room_id):
+        from channels.testing import WebsocketCommunicator
+        from channels.routing import URLRouter
+        from chat.routing import websocket_urlpatterns
+        return WebsocketCommunicator(URLRouter(websocket_urlpatterns), f"/ws/graph/chat/{room_id}/")
+
+    async def _auth(self, communicator, user_id):
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        token = _make_token(user_id=user_id)
+        await communicator.send_to(text_data=json.dumps({"type": "auth", "token": token}))
+
+    async def test_sahip_auth_ok_alir(self):
+        communicator = self._communicator(self.room.pk)
+        try:
+            await self._auth(communicator, user_id=1)
+            response = json.loads(await communicator.receive_from())
+            self.assertEqual(response["type"], "auth_ok")
+        finally:
+            await communicator.disconnect()
+
+    async def test_sahip_olmayan_4004_ile_kapanir(self):
+        communicator = self._communicator(self.room.pk)
+        try:
+            await self._auth(communicator, user_id=2)
+            event = await communicator.receive_output()
+            self.assertEqual(event["type"], "websocket.close")
+            self.assertEqual(event["code"], 4004)
+        finally:
+            await communicator.disconnect()
+
+    async def test_olmayan_oda_4004_ile_kapanir(self):
+        communicator = self._communicator(99999)
+        try:
+            await self._auth(communicator, user_id=1)
+            event = await communicator.receive_output()
+            self.assertEqual(event["type"], "websocket.close")
+            self.assertEqual(event["code"], 4004)
+        finally:
+            await communicator.disconnect()

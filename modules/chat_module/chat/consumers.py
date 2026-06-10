@@ -97,7 +97,13 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        self.user_id = payload.get('user_id')
+        user_id = payload.get('user_id')
+        if not await self._user_can_access_room(self.room_id, user_id):
+            logger.warning("[WS] auth failed: room access denied | room=%s | user=%s", self.room_id, user_id)
+            await self.close(code=4004)
+            return
+
+        self.user_id = user_id
         self.token = token
         self.authenticated = True
 
@@ -280,6 +286,11 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
             'sources': event.get('sources', {}),
             'action_type': event.get('action_type', ''),
         }))
+
+    @database_sync_to_async
+    def _user_can_access_room(self, room_id, user_id):
+        from .repositories import ChatRepository
+        return ChatRepository.user_can_access_room(room_id, user_id)
 
     @database_sync_to_async
     def save_message(self, room_id, role, content, sources=None):
