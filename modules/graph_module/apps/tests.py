@@ -11,15 +11,18 @@ Geri kalan her şey gerçek: JWT üretimi/doğrulaması, serializer validasyonu,
   GraphService iş mantığı, Document/GraphTask DB kayıtları.
 """
 
+import tempfile
 import uuid
 from io import BytesIO
 from unittest import mock
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from django.conf import settings
 
 from apps.models import Document, GraphTask, ContentChunk
+
+_TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="graph_test_media_")
 
 
 # ── JWT yardımcı ─────────────────────────────────────────────────────────────
@@ -93,6 +96,7 @@ class AuthRequiredTest(TestCase):
 
 # ── 2. Belge yükleme senaryosu ────────────────────────────────────────────────
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class DocumentUploadScenarioTest(TestCase):
     """
     Senaryo: Kullanıcı yeni not defteri oluşturduktan sonra belge yükler.
@@ -165,6 +169,7 @@ class DocumentUploadScenarioTest(TestCase):
 
 # ── 3. Belge listeleme ve kullanıcı izolasyonu ────────────────────────────────
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class DocumentListAndIsolationTest(TestCase):
     """
     Senaryo: Kullanıcı sadece kendi belgelerini görür;
@@ -215,6 +220,7 @@ class DocumentListAndIsolationTest(TestCase):
 
 # ── 4. Belge detay ve silme — kullanıcı izolasyonu ───────────────────────────
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class DocumentDetailAndDeleteTest(TestCase):
     def setUp(self):
         self.patches = list(_ALWAYS_MOCK)
@@ -257,6 +263,7 @@ class DocumentDetailAndDeleteTest(TestCase):
 
 # ── 5. Task durumu ────────────────────────────────────────────────────────────
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class DocumentTaskStatusTest(TestCase):
     def setUp(self):
         self.patches = list(_ALWAYS_MOCK)
@@ -449,6 +456,7 @@ class QueryRoomAccessTest(TestCase):
         m.assert_not_called()
 
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class UploadRoomAccessTest(TestCase):
     """room_id'li doküman yükleme sahiplik doğrulaması gerektirir."""
 
@@ -484,15 +492,16 @@ class UploadRoomAccessTest(TestCase):
         m.assert_not_called()
 
 
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class PipelineIdempotencyTest(TestCase):
     """Pipeline retry'ı eski chunk'ları temizleyip baştan başlamalı."""
 
     def setUp(self):
         self.document = Document.objects.create(
             user_id="1",
-            file_name="t.pdf",
-            file_type="application/pdf",
-            file="documents/t.pdf",
+            file_name="t.txt",
+            file_type="text/plain",
+            file=SimpleUploadedFile("t.txt", "uzun metin".encode("utf-8"), content_type="text/plain"),
             status="pending",
         )
         self.task = GraphTask.objects.create(document=self.document)

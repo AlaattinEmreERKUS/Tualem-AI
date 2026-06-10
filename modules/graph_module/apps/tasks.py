@@ -77,8 +77,7 @@ def _extract_text(file_path: str, file_type: str) -> str:
 
 
 @shared_task(bind=True, max_retries=3)
-def run_graph_pipeline(self, document_id: str, task_id: str, file_b64: str = None, file_type: str = None, file_name: str = None):
-    import base64
+def run_graph_pipeline(self, document_id: str, task_id: str):
     import tempfile
 
     logger.info("[pipeline] start | doc=%s task=%s", document_id, task_id)
@@ -101,18 +100,18 @@ def run_graph_pipeline(self, document_id: str, task_id: str, file_b64: str = Non
             neo4j.delete_chunks(stale_chunk_ids)
 
         GraphRepository.update_task_step(task_id, "text_extraction")
-        logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s", document_id, file_name, file_type)
         try:
-            if file_b64:
-                suffix = os.path.splitext(file_name or "")[1] or ".bin"
-                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                    tmp.write(base64.b64decode(file_b64))
-                    tmp_path = tmp.name
-                text = _extract_text(tmp_path, file_type)
-            else:
-                from apps.models import Document
-                document = Document.objects.get(id=document_id)
-                text = _extract_text(document.file.path, document.file_type)
+            from apps.models import Document
+            document = Document.objects.get(id=document_id)
+            logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s",
+                        document_id, document.file_name, document.file_type)
+            suffix = os.path.splitext(document.file_name or "")[1] or ".bin"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                with document.file.open("rb") as src:
+                    for piece in src.chunks():
+                        tmp.write(piece)
+                tmp_path = tmp.name
+            text = _extract_text(tmp_path, document.file_type)
             logger.info("[pipeline] text_extraction ok | doc=%s | chars=%d", document_id, len(text))
         except Exception as e:
             logger.error("[pipeline] text_extraction failed | doc=%s | error=%s", document_id, e)

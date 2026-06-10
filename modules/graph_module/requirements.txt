@@ -25,3 +25,4 @@ arxiv>=2.0
 httpx>=0.27
 gunicorn>=21.2
 dj-database-url>=2.1
+django-storages[s3]>=1.14

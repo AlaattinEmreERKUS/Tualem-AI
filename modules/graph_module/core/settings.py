@@ -141,6 +141,24 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+if config('S3_BUCKET_NAME', default=''):
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'bucket_name': config('S3_BUCKET_NAME'),
+                'access_key': config('S3_ACCESS_KEY_ID'),
+                'secret_key': config('S3_SECRET_ACCESS_KEY'),
+                'endpoint_url': config('S3_ENDPOINT_URL', default=None),
+                'region_name': config('S3_REGION', default='auto'),
+                'file_overwrite': False,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+
 JWT_SECRET = config('JWT_SECRET')
 
 CORS_ALLOWED_ORIGINS = config(
