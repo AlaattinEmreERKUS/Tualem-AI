@@ -19,7 +19,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from django.conf import settings
 
-from apps.models import Document, GraphTask
+from apps.models import Document, GraphTask, ContentChunk
 
 
 # ── JWT yardımcı ─────────────────────────────────────────────────────────────
@@ -482,3 +482,55 @@ class UploadRoomAccessTest(TestCase):
             res = self.client.post("/api/documents/", {"file": _pdf_file()}, format="multipart")
         self.assertEqual(res.status_code, 201)
         m.assert_not_called()
+
+
+class PipelineIdempotencyTest(TestCase):
+    """Pipeline retry'ı eski chunk'ları temizleyip baştan başlamalı."""
+
+    def setUp(self):
+        self.document = Document.objects.create(
+            user_id="1",
+            file_name="t.pdf",
+            file_type="application/pdf",
+            file="documents/t.pdf",
+            status="pending",
+        )
+        self.task = GraphTask.objects.create(document=self.document)
+
+    def _neo4j_mock(self):
+        m = mock.MagicMock()
+        m.chunk_text.return_value = ["parça bir", "parça iki"]
+        m.extract_graph_data.return_value = {"entities": [], "relationships": []}
+        return m
+
+    def _run_pipeline(self, neo4j_mock):
+        from apps.tasks import run_graph_pipeline
+        with mock.patch("apps.tasks._get_neo4j_client", return_value=neo4j_mock), \
+             mock.patch("apps.tasks._extract_text", return_value="uzun metin"), \
+             mock.patch("apps.vector_store.VectorStore", mock.MagicMock()):
+            run_graph_pipeline(str(self.document.id), str(self.task.id))
+
+    def test_eski_chunklar_temizlenir(self):
+        stale = ContentChunk.objects.create(document=self.document, content="eski", chunk_index=0)
+        neo4j = self._neo4j_mock()
+        self._run_pipeline(neo4j)
+        neo4j.delete_chunks.assert_called_once_with([str(stale.id)])
+        self.assertFalse(ContentChunk.objects.filter(id=stale.id).exists())
+        self.assertEqual(ContentChunk.objects.filter(document=self.document).count(), 2)
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.status, "completed")
+
+    def test_temiz_dokumanda_silme_cagrilmaz(self):
+        neo4j = self._neo4j_mock()
+        self._run_pipeline(neo4j)
+        neo4j.delete_chunks.assert_not_called()
+        self.assertEqual(ContentChunk.objects.filter(document=self.document).count(), 2)
+
+    def test_ikinci_calistirma_unique_kisitina_takilmaz(self):
+        self._run_pipeline(self._neo4j_mock())
+        self._run_pipeline(self._neo4j_mock())
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.status, "completed")
+        self.assertEqual(ContentChunk.objects.filter(document=self.document).count(), 2)
+        task = GraphTask.objects.get(id=self.task.id)
+        self.assertEqual(task.current_step, "completed")

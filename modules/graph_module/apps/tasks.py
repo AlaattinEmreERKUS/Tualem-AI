@@ -95,6 +95,11 @@ def run_graph_pipeline(self, document_id: str, task_id: str, file_b64: str = Non
 
     tmp_path = None
     try:
+        stale_chunk_ids = GraphRepository.delete_chunks_by_document(document_id)
+        if stale_chunk_ids:
+            logger.info("[pipeline] cleanup | doc=%s | stale_chunks=%d", document_id, len(stale_chunk_ids))
+            neo4j.delete_chunks(stale_chunk_ids)
+
         GraphRepository.update_task_step(task_id, "text_extraction")
         logger.info("[pipeline] text_extraction | doc=%s | file=%s type=%s", document_id, file_name, file_type)
         try:

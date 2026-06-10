@@ -62,6 +62,16 @@ class GraphRepository:
             return None
 
     @staticmethod
+    def delete_chunks_by_document(document_id):
+        try:
+            qs = ContentChunk.objects.filter(document_id=document_id)
+            ids = [str(i) for i in qs.values_list('id', flat=True)]
+            qs.delete()
+            return ids
+        except Exception:
+            return []
+
+    @staticmethod
     def create_chunks(document_id, chunks: list[str]):
         try:
             instances = [
