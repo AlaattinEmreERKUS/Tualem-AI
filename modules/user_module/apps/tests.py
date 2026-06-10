@@ -172,73 +172,46 @@ class LoginTemplateViewTest(TestCase):
         self.assertEqual(res.status_code, 200)
 
 
-# ── 4. API: Tam kayıt → doğrulama → giriş → profil akışı ────────────────────
+# ── 4. API: Tam kayıt → giriş → profil akışı ─────────────────────────────────
+# Not: E-posta doğrulama user_service'te geçici kapalı (domain hazır olunca
+# açılacak). Akış mevcut davranışı test eder: kayıt → direkt aktif + token.
 
 class RegistrationAndLoginFlowTest(TestCase):
     """
     Senaryo:
-      1. Kayıt → kullanıcı pasif oluşur, doğrulama kodu üretilir
-      2. Pasif kullanıcı login'e çalışır → 403 + requires_verification
-      3. Yanlış kod → 400
-      4. Doğru kod → kullanıcı aktif, access token alır
-      5. Token ile profile erişilir → 200
-      6. Logout → token blacklist'e eklenir
+      1. Kayıt → kullanıcı aktif oluşur, token çifti döner
+      2. Token ile profile erişilir → 200
+      3. Login → 200 + token
     """
 
     REGISTER_PAYLOAD = {
         "first_name": "Emre", "last_name": "Test",
         "username": "emretest", "email": "emre@flow.com",
-        "password": "TestPass1@",
+        "password": "TestPass1@", "confirm_password": "TestPass1@",
     }
 
     def setUp(self):
         self.client = APIClient()
-        self._verification_code = "847291"  # sabit test kodu
 
-    @mock.patch("apps.utils.email_service.send_verification_email")
-    @mock.patch("apps.utils.verification.mark_resend")
-    @mock.patch("apps.utils.verification.can_resend", return_value=True)
-    @mock.patch("apps.utils.verification.store_code")
-    def test_tam_kayit_ve_giris_akisi(self, m_store, m_can, m_mark, m_email):
-        # 1. Kayıt
+    def test_tam_kayit_ve_giris_akisi(self):
+        # 1. Kayıt → direkt aktif + token
         res = self.client.post(REGISTER, self.REGISTER_PAYLOAD, format="json")
-        self.assertEqual(res.status_code, 201)
-        self.assertTrue(res.json()["requires_verification"])
-        m_email.assert_called_once()
-
-        # 2. Kullanıcı DB'de pasif oluştu
-        user = CustomUser.objects.get(email="emre@flow.com")
-        self.assertFalse(user.is_active)
-
-        # 3. Pasif kullanıcı login edemez
-        res = self.client.post(LOGIN, {"identifier": "emretest", "password": "TestPass1@"}, format="json")
-        self.assertEqual(res.status_code, 403)
-        self.assertTrue(res.json().get("requires_verification"))
-
-        # 4. Yanlış kodla doğrulama başarısız
-        with mock.patch("apps.utils.verification.get_code", return_value=self._verification_code):
-            res = self.client.post(VERIFY, {"email": "emre@flow.com", "code": "000000"}, format="json")
-        self.assertEqual(res.status_code, 400)
-
-        # 5. Doğru kodla doğrulama
-        with mock.patch("apps.utils.verification.get_code", return_value=self._verification_code), \
-             mock.patch("apps.utils.verification.clear_code"):
-            res = self.client.post(VERIFY, {"email": "emre@flow.com", "code": self._verification_code}, format="json")
         self.assertEqual(res.status_code, 200)
-        access_token = res.json().get("access_token")
-        self.assertIsNotNone(access_token)
+        body = res.json()
+        self.assertIn("access_token", body)
+        self.assertIn("refresh_token", body)
 
-        # 6. Kullanıcı artık aktif
-        user.refresh_from_db()
+        # 2. Kullanıcı DB'de aktif oluştu
+        user = CustomUser.objects.get(email="emre@flow.com")
         self.assertTrue(user.is_active)
 
-        # 7. Token ile profil erişimi
-        with mock.patch("apps.utils.token_blacklist.is_blacklisted", return_value=False):
-            res = self.client.get(PROFILE, HTTP_AUTHORIZATION=f"Bearer {access_token}")
+        # 3. Token ile profil erişimi
+        with mock.patch("apps.authentication.is_blacklisted", return_value=False):
+            res = self.client.get(PROFILE, HTTP_AUTHORIZATION=f"Bearer {body['access_token']}")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["email"], "emre@flow.com")
 
-        # 8. Aktif kullanıcı artık login olabilir
+        # 4. Login çalışır
         res = self.client.post(LOGIN, {"identifier": "emretest", "password": "TestPass1@"}, format="json")
         self.assertEqual(res.status_code, 200)
         self.assertIn("access_token", res.json())
@@ -250,7 +223,7 @@ class RegisterAPIEdgeCasesTest(TestCase):
     VALID = {
         "first_name": "Ad", "last_name": "Soyad",
         "username": "edgeuser", "email": "edge@example.com",
-        "password": "TestPass1@",
+        "password": "TestPass1@", "confirm_password": "TestPass1@",
     }
 
     def setUp(self):
@@ -259,7 +232,7 @@ class RegisterAPIEdgeCasesTest(TestCase):
             mock.patch("apps.utils.verification.store_code"),
             mock.patch("apps.utils.verification.mark_resend"),
             mock.patch("apps.utils.verification.can_resend", return_value=True),
-            mock.patch("apps.utils.email_service.send_verification_email"),
+            mock.patch("apps.service.user_service.send_verification_email"),
         ]
         for p in self._patches:
             p.start()
@@ -279,15 +252,15 @@ class RegisterAPIEdgeCasesTest(TestCase):
         self.assertEqual(res.status_code, 409)
 
     def test_pasif_email_ile_kayit_yeni_kullanici_olusturmaz(self):
-        """Doğrulanmamış hesap varsa → yeni kullanıcı oluşturmadan kod gönderir."""
+        """Doğrulama kapalıyken aynı email'li pasif hesap varsa → 409, yeni kullanıcı yok."""
         _make_inactive_user(username="baska2", email="edge@example.com")
         onceki_sayi = CustomUser.objects.count()
         res = self.client.post(REGISTER, self.VALID, format="json")
-        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.status_code, 409)
         self.assertEqual(CustomUser.objects.count(), onceki_sayi)  # yeni kullanıcı YOK
 
     def test_zayif_sifre_400(self):
-        res = self.client.post(REGISTER, {**self.VALID, "password": "kisa"}, format="json")
+        res = self.client.post(REGISTER, {**self.VALID, "password": "kisa", "confirm_password": "kisa"}, format="json")
         self.assertEqual(res.status_code, 400)
 
     def test_eksik_alan_400(self):
@@ -311,12 +284,12 @@ class AuthSecurityTest(TestCase):
         self.assertIn(res.status_code, [401, 403])
 
     def test_blacklisted_token_ile_profile_403(self):
-        with mock.patch("apps.utils.token_blacklist.is_blacklisted", return_value=True):
+        with mock.patch("apps.authentication.is_blacklisted", return_value=True):
             res = self.client.get(PROFILE, HTTP_AUTHORIZATION=f"Bearer {_get_token(self.user)}")
         self.assertIn(res.status_code, [401, 403])
 
     def test_gecerli_token_ile_profile_200(self):
-        with mock.patch("apps.utils.token_blacklist.is_blacklisted", return_value=False):
+        with mock.patch("apps.authentication.is_blacklisted", return_value=False):
             res = self.client.get(PROFILE, **_auth(self.user))
         self.assertEqual(res.status_code, 200)
 
@@ -327,7 +300,7 @@ class ProfileUpdateTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = _make_active_user()
-        self._bl = mock.patch("apps.utils.token_blacklist.is_blacklisted", return_value=False)
+        self._bl = mock.patch("apps.authentication.is_blacklisted", return_value=False)
         self._bl.start()
 
     def tearDown(self):
@@ -376,7 +349,8 @@ class RefreshTokenTest(TestCase):
     def test_gecerli_refresh_token_yeni_access_token_uretir(self):
         from apps.utils.jwt_utils import generate_token_pair
         tokens = generate_token_pair(self.user)
-        res = self.client.post(REFRESH, {"refresh_token": tokens["refresh_token"]}, format="json")
+        with mock.patch("apps.service.user_service.is_blacklisted", return_value=False):
+            res = self.client.post(REFRESH, {"refresh_token": tokens["refresh_token"]}, format="json")
         self.assertEqual(res.status_code, 200)
         self.assertIn("access_token", res.json())
 
@@ -388,6 +362,60 @@ class RefreshTokenTest(TestCase):
     def test_bozuk_token_ile_refresh_401(self):
         res = self.client.post(REFRESH, {"refresh_token": "bozuk.token.burada"}, format="json")
         self.assertEqual(res.status_code, 401)
+
+    def test_blacklistli_refresh_token_401(self):
+        from apps.utils.jwt_utils import generate_token_pair
+        tokens = generate_token_pair(self.user)
+        with mock.patch("apps.service.user_service.is_blacklisted", return_value=True):
+            res = self.client.post(REFRESH, {"refresh_token": tokens["refresh_token"]}, format="json")
+        self.assertEqual(res.status_code, 401)
+
+    def test_blacklistsiz_refresh_token_200(self):
+        from apps.utils.jwt_utils import generate_token_pair
+        tokens = generate_token_pair(self.user)
+        with mock.patch("apps.service.user_service.is_blacklisted", return_value=False):
+            res = self.client.post(REFRESH, {"refresh_token": tokens["refresh_token"]}, format="json")
+        self.assertEqual(res.status_code, 200)
+
+
+# ── 8b. API: Logout ──────────────────────────────────────────────────────────
+
+class LogoutTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = _make_active_user()
+        self._bl = mock.patch("apps.authentication.is_blacklisted", return_value=False)
+        self._bl.start()
+
+    def tearDown(self):
+        self._bl.stop()
+
+    def test_logout_access_token_blacklistlenir(self):
+        with mock.patch("apps.views.blacklist_token") as m:
+            res = self.client.post(LOGOUT, {}, format="json", **_auth(self.user))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(m.call_count, 1)
+
+    def test_logout_refresh_token_da_blacklistlenir(self):
+        from apps.utils.jwt_utils import generate_token_pair
+        tokens = generate_token_pair(self.user)
+        with mock.patch("apps.views.blacklist_token") as m:
+            res = self.client.post(
+                LOGOUT,
+                {"refresh_token": tokens["refresh_token"]},
+                format="json",
+                HTTP_AUTHORIZATION=f"Bearer {tokens['access_token']}",
+            )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(m.call_count, 2)
+
+    def test_bozuk_refresh_token_logout_yine_200(self):
+        with mock.patch("apps.views.blacklist_token") as m:
+            res = self.client.post(
+                LOGOUT, {"refresh_token": "bozuk.token"}, format="json", **_auth(self.user)
+            )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(m.call_count, 1)
 
 
 # ── 9. API: Kod yeniden gönderme ──────────────────────────────────────────────
@@ -401,7 +429,7 @@ class ResendCodeTest(TestCase):
         with mock.patch("apps.utils.verification.can_resend", return_value=True), \
              mock.patch("apps.utils.verification.store_code"), \
              mock.patch("apps.utils.verification.mark_resend"), \
-             mock.patch("apps.utils.email_service.send_verification_email") as m_mail:
+             mock.patch("apps.service.user_service.send_verification_email") as m_mail:
             res = self.client.post(RESEND, {"email": "inactive1@example.com"}, format="json")
         self.assertEqual(res.status_code, 200)
         m_mail.assert_called_once()
@@ -414,7 +442,7 @@ class ResendCodeTest(TestCase):
 
     def test_aktif_kullaniciya_kod_gonderilmez(self):
         _make_active_user()
-        with mock.patch("apps.utils.email_service.send_verification_email") as m_mail:
+        with mock.patch("apps.service.user_service.send_verification_email") as m_mail:
             res = self.client.post(RESEND, {"email": "user1@example.com"}, format="json")
         self.assertEqual(res.status_code, 200)
         m_mail.assert_not_called()

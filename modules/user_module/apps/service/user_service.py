@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from apps.repositories.user_repository import UserRepository
 from apps.utils.jwt_utils import generate_token_pair, generate_access_token, decode_token
+from apps.utils.token_blacklist import is_blacklisted
 from apps.utils import verification
 from apps.utils.email_service import send_verification_email
 from apps.exceptions.user_exceptions import (
@@ -40,10 +41,10 @@ class UserService:
         #     send_verification_email(email, code)
         #     return {"requires_verification": True, "email": email}
 
-        if UserRepository.exists_by_username(username):
+        if UserRepository.username_taken(username):
             raise UserAlreadyExistsException("kullanıcı adı")
 
-        if UserRepository.exists_by_email(email):
+        if UserRepository.exists_by_email(email) or UserRepository.get_inactive_by_email(email):
             raise UserAlreadyExistsException("e-posta")
 
         # E-posta doğrulama kapalıyken direkt aktif oluştur
@@ -112,6 +113,10 @@ class UserService:
         payload = decode_token(refresh_token)
 
         if payload.get("type") != "refresh":
+            raise InvalidTokenException()
+
+        jti = payload.get("jti")
+        if jti and is_blacklisted(jti):
             raise InvalidTokenException()
 
         user = UserRepository.get_by_id(payload["user_id"])

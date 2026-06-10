@@ -36,6 +36,19 @@ from apps.utils.token_blacklist import blacklist_token
 from apps.utils.jwt_utils import decode_token as _decode_token
 from django.conf import settings as django_settings
 import math
+import time
+
+
+def _blacklist_if_valid(token: str) -> None:
+    try:
+        from shared.jwt_utils import decode_token as _shared_decode
+        payload = _shared_decode(token, django_settings.JWT_SECRET)
+        jti = payload.get("jti")
+        ttl = max(payload.get("exp", 0) - int(time.time()), 0)
+        if jti and ttl > 0:
+            blacklist_token(jti, ttl)
+    except Exception:
+        pass
 
 
 # --- Template Views ---
@@ -265,16 +278,10 @@ class LogoutView(APIView):
         if not token:
             return Response({"error": "Token sağlanmadı."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            from shared.jwt_utils import decode_token as _shared_decode
-            payload = _shared_decode(token, django_settings.JWT_SECRET)
-            jti = payload.get("jti")
-            exp = payload.get("exp", 0)
-            now = int(__import__("time").time())
-            ttl = max(exp - now, 0)
-            if jti and ttl > 0:
-                blacklist_token(jti, ttl)
-        except Exception:
-            pass
+        _blacklist_if_valid(token)
+
+        refresh_token = request.data.get("refresh_token")
+        if refresh_token:
+            _blacklist_if_valid(refresh_token)
 
         return Response({"detail": "Çıkış yapıldı."}, status=status.HTTP_200_OK)
