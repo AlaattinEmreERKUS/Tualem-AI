@@ -1,6 +1,18 @@
 import uuid
 from django.db import models
-from pgvector.django import VectorField
+from pgvector.django import VectorField, HnswIndex
+
+
+class VendorAwareHnswIndex(HnswIndex):
+    def create_sql(self, model, schema_editor, using='', **kwargs):
+        if schema_editor.connection.vendor != 'postgresql':
+            return ''
+        return super().create_sql(model, schema_editor, using=using, **kwargs)
+
+    def remove_sql(self, model, schema_editor, **kwargs):
+        if schema_editor.connection.vendor != 'postgresql':
+            return ''
+        return super().remove_sql(model, schema_editor, **kwargs)
 
 class Document(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -34,6 +46,15 @@ class ContentChunk(models.Model):
     class Meta:
         app_label = 'graph'
         unique_together = [('document', 'chunk_index')]
+        indexes = [
+            VendorAwareHnswIndex(
+                name='chunk_embedding_hnsw',
+                fields=['embedding'],
+                m=16,
+                ef_construction=64,
+                opclasses=['vector_cosine_ops'],
+            ),
+        ]
 
 class GraphTask(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

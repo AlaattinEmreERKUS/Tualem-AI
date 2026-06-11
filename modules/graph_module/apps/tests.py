@@ -23,6 +23,10 @@ from django.conf import settings
 from apps.models import Document, GraphTask, ContentChunk
 
 _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="graph_test_media_")
+_TEST_STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 
 # ── JWT yardımcı ─────────────────────────────────────────────────────────────
@@ -96,7 +100,7 @@ class AuthRequiredTest(TestCase):
 
 # ── 2. Belge yükleme senaryosu ────────────────────────────────────────────────
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class DocumentUploadScenarioTest(TestCase):
     """
     Senaryo: Kullanıcı yeni not defteri oluşturduktan sonra belge yükler.
@@ -169,7 +173,7 @@ class DocumentUploadScenarioTest(TestCase):
 
 # ── 3. Belge listeleme ve kullanıcı izolasyonu ────────────────────────────────
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class DocumentListAndIsolationTest(TestCase):
     """
     Senaryo: Kullanıcı sadece kendi belgelerini görür;
@@ -220,7 +224,7 @@ class DocumentListAndIsolationTest(TestCase):
 
 # ── 4. Belge detay ve silme — kullanıcı izolasyonu ───────────────────────────
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class DocumentDetailAndDeleteTest(TestCase):
     def setUp(self):
         self.patches = list(_ALWAYS_MOCK)
@@ -263,7 +267,7 @@ class DocumentDetailAndDeleteTest(TestCase):
 
 # ── 5. Task durumu ────────────────────────────────────────────────────────────
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class DocumentTaskStatusTest(TestCase):
     def setUp(self):
         self.patches = list(_ALWAYS_MOCK)
@@ -456,7 +460,7 @@ class QueryRoomAccessTest(TestCase):
         m.assert_not_called()
 
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class UploadRoomAccessTest(TestCase):
     """room_id'li doküman yükleme sahiplik doğrulaması gerektirir."""
 
@@ -492,7 +496,7 @@ class UploadRoomAccessTest(TestCase):
         m.assert_not_called()
 
 
-@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, STORAGES=_TEST_STORAGES)
 class PipelineIdempotencyTest(TestCase):
     """Pipeline retry'ı eski chunk'ları temizleyip baştan başlamalı."""
 
