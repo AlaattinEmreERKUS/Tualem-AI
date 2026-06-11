@@ -6,114 +6,78 @@ class GraphRepository:
 
     @staticmethod
     def get_document_list(user_id, room_id=None):
-        try:
-            qs = Document.objects.filter(user_id=str(user_id))
-            if room_id:
-                qs = qs.filter(room_id=str(room_id))
-            return qs.values()
-        except Exception:
-            return None
+        qs = Document.objects.filter(user_id=str(user_id))
+        if room_id:
+            qs = qs.filter(room_id=str(room_id))
+        return qs.values()
 
     @staticmethod
     def get_document_by_id(document_id, user_id):
-        try:
-            return Document.objects.filter(id=document_id, user_id=str(user_id)).values().first()
-        except Exception:
-            return None
+        return Document.objects.filter(id=document_id, user_id=str(user_id)).values().first()
 
     @staticmethod
     def create_document(user_id, file_name, file_type, file, room_id=None):
-        try:
-            instance = Document(
-                user_id=user_id,
-                room_id=room_id,
-                file_name=file_name,
-                file_type=file_type,
-                file=file,
-                status='pending'
-            )
-            instance.save()
-            return instance
-        except Exception:
-            return None
+        instance = Document(
+            user_id=user_id,
+            room_id=room_id,
+            file_name=file_name,
+            file_type=file_type,
+            file=file,
+            status='pending'
+        )
+        instance.save()
+        return instance
 
     @staticmethod
     def update_document_status(document_id, status):
-        try:
-            return Document.objects.filter(id=document_id).update(status=status) > 0
-        except Exception:
-            return False
+        return Document.objects.filter(id=document_id).update(status=status) > 0
 
     @staticmethod
     def delete_document(document_id, user_id):
-        try:
-            count, _ = Document.objects.filter(id=document_id, user_id=str(user_id)).delete()
-            return count > 0
-        except Exception:
-            return False
+        count, _ = Document.objects.filter(id=document_id, user_id=str(user_id)).delete()
+        return count > 0
 
     # --- ContentChunk ---
 
     @staticmethod
     def get_chunks_by_document(document_id):
-        try:
-            return list(ContentChunk.objects.filter(document_id=document_id).order_by('chunk_index').values())
-        except Exception:
-            return None
+        return list(ContentChunk.objects.filter(document_id=document_id).order_by('chunk_index').values())
 
     @staticmethod
     def delete_chunks_by_document(document_id):
-        try:
-            qs = ContentChunk.objects.filter(document_id=document_id)
-            ids = [str(i) for i in qs.values_list('id', flat=True)]
-            qs.delete()
-            return ids
-        except Exception:
-            return []
+        qs = ContentChunk.objects.filter(document_id=document_id)
+        ids = [str(i) for i in qs.values_list('id', flat=True)]
+        qs.delete()
+        return ids
 
     @staticmethod
     def create_chunks(document_id, chunks: list[str]):
-        try:
-            instances = [
-                ContentChunk(document_id=document_id, content=text, chunk_index=i)
-                for i, text in enumerate(chunks)
-            ]
-            ContentChunk.objects.bulk_create(instances)
-            return [str(c.id) for c in instances]
-        except Exception:
-            return None
+        instances = [
+            ContentChunk(document_id=document_id, content=text, chunk_index=i)
+            for i, text in enumerate(chunks)
+        ]
+        ContentChunk.objects.bulk_create(instances)
+        return [str(c.id) for c in instances]
 
     @staticmethod
     def mark_chunk_embedded(chunk_id):
-        try:
-            return ContentChunk.objects.filter(id=chunk_id).update(is_embedded=True) > 0
-        except Exception:
-            return False
+        return ContentChunk.objects.filter(id=chunk_id).update(is_embedded=True) > 0
 
     # --- GraphTask ---
 
     @staticmethod
     def create_task(document_id):
-        try:
-            task = GraphTask(document_id=document_id)
-            task.save()
-            return task
-        except Exception:
-            return None
+        task = GraphTask(document_id=document_id)
+        task.save()
+        return task
 
     @staticmethod
     def get_task_by_document(document_id):
-        try:
-            return GraphTask.objects.filter(document_id=document_id).values().last()
-        except Exception:
-            return None
+        return GraphTask.objects.filter(document_id=document_id).values().last()
 
     @staticmethod
     def update_task_step(task_id, step, error_message=None):
-        try:
-            return GraphTask.objects.filter(id=task_id).update(
-                current_step=step,
-                error_message=error_message
-            ) > 0
-        except Exception:
-            return False
+        return GraphTask.objects.filter(id=task_id).update(
+            current_step=step,
+            error_message=error_message
+        ) > 0

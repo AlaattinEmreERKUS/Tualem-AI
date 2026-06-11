@@ -3,11 +3,7 @@ import httpx
 from django.core.files.base import ContentFile
 
 from apps.repositories.graph_repository import GraphRepository
-from apps.exceptions.graph_exceptions import (
-    LiteratureSearchException,
-    DocumentSaveException,
-    TaskCreationException,
-)
+from apps.exceptions.graph_exceptions import LiteratureSearchException
 
 
 class LiteratureSearchService:
@@ -54,13 +50,12 @@ class LiteratureSearchService:
             file_type="application/pdf",
             file=file_content,
         )
-        if not document:
-            raise DocumentSaveException()
 
-        task = GraphRepository.create_task(document.id)
-        if not task:
+        try:
+            task = GraphRepository.create_task(document.id)
+        except Exception:
             GraphRepository.update_document_status(document.id, "failed")
-            raise TaskCreationException()
+            raise
 
         from apps.tasks import run_graph_pipeline
         run_graph_pipeline.delay(str(document.id), str(task.id))

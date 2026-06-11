@@ -124,9 +124,6 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
             logger.error("[pipeline] chunking failed: no chunks | doc=%s", document_id)
             raise PipelineException("chunking", "Metin parçalanamadı.")
         chunk_ids = GraphRepository.create_chunks(document_id, chunks)
-        if not chunk_ids:
-            logger.error("[pipeline] chunking failed: db save | doc=%s", document_id)
-            raise PipelineException("chunking", "Chunk'lar kaydedilemedi.")
         logger.info("[pipeline] chunking ok | doc=%s | chunks=%d", document_id, len(chunks))
 
         GraphRepository.update_task_step(task_id, "entity_extraction")
