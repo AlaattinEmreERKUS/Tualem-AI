@@ -197,7 +197,7 @@ class DocumentListAndIsolationTest(TestCase):
     def test_bos_liste_200_doner(self):
         res = _authed_client(user_id=1).get("/api/documents/")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json(), [])
+        self.assertEqual(res.json()["results"], [])
 
     def test_kullanici_sadece_kendi_belgelerini_gorur(self):
         client1 = _authed_client(user_id=1)
@@ -208,7 +208,7 @@ class DocumentListAndIsolationTest(TestCase):
 
         res = client1.get("/api/documents/")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.json()), 2)  # user1 sadece kendi 2 belgesini görür
+        self.assertEqual(len(res.json()["results"]), 2)
 
     def test_room_id_filtresi_calisir(self):
         client = _authed_client(user_id=5)
@@ -217,8 +217,7 @@ class DocumentListAndIsolationTest(TestCase):
         self._upload(client, room_id="20")  # farklı oda
 
         res = client.get("/api/documents/?room_id=10")
-        data = res.json()
-        # room_id=10 ve room_id=null belgeler döner (mevcut repository mantığı)
+        data = res.json()["results"]
         room_ids = [d["room_id"] for d in data]
         self.assertNotIn("20", room_ids)
 

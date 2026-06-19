@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .repositories import ChatRepository
 from .chat_serializers import ChatRoomSerializer, ChatMessageSerializer
+from .pagination import RoomPagination, MessagePagination
 
 logger = logging.getLogger("chat_module")
 
@@ -16,9 +17,11 @@ class ChatRoomViewSet(viewsets.ViewSet):
         logger.info("[rooms] list | user=%s", request.user.id)
         try:
             rooms = ChatRepository.get_rooms_by_user(user_id=request.user.id)
-            serializer = ChatRoomSerializer(rooms, many=True)
+            paginator = RoomPagination()
+            page = paginator.paginate_queryset(rooms, request)
+            serializer = ChatRoomSerializer(page, many=True)
             logger.info("[rooms] list ok | count=%d", len(serializer.data))
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return paginator.get_paginated_response(serializer.data)
         except Exception as e:
             logger.exception("[rooms] list error | %s", e)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -96,5 +99,7 @@ class ChatMessageViewSet(viewsets.ViewSet):
             return Response({"error": "Bu odaya erişim yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
 
         messages = ChatRepository.get_messages_by_room(room_id=room_pk)
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        paginator = MessagePagination()
+        page = paginator.paginate_queryset(messages, request)
+        serializer = ChatMessageSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)

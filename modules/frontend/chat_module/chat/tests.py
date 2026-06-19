@@ -85,7 +85,7 @@ class ChatRoomLifecycleTest(TestCase):
         # 1. Başlangıçta boş liste
         res = self.client.get(ROOMS_URL)
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json(), [])
+        self.assertEqual(res.json()["results"], [])
 
         # 2. Oda oluştur
         res = self.client.post(ROOMS_URL, {"title": "Makine Öğrenmesi"}, format="json")
@@ -98,7 +98,7 @@ class ChatRoomLifecycleTest(TestCase):
 
         # 4. Listede görünüyor
         res = self.client.get(ROOMS_URL)
-        self.assertEqual(len(res.json()), 1)
+        self.assertEqual(len(res.json()["results"]), 1)
 
         # 5. Başlığı güncelle
         res = self.client.patch(_room_url(room_id), {"title": "Derin Öğrenme"}, format="json")
@@ -114,7 +114,7 @@ class ChatRoomLifecycleTest(TestCase):
 
         # 8. Liste tekrar boş
         res = self.client.get(ROOMS_URL)
-        self.assertEqual(res.json(), [])
+        self.assertEqual(res.json()["results"], [])
 
 
 # ── 3. Kullanıcı izolasyonu ───────────────────────────────────────────────────
@@ -145,11 +145,11 @@ class UserIsolationTest(TestCase):
         res1 = self.client1.get(ROOMS_URL)
         res2 = self.client2.get(ROOMS_URL)
 
-        self.assertEqual(len(res1.json()), 2)
-        self.assertEqual(len(res2.json()), 1)
+        self.assertEqual(len(res1.json()["results"]), 2)
+        self.assertEqual(len(res2.json()["results"]), 1)
 
         # İsimler doğru
-        basliklar1 = {r["title"] for r in res1.json()}
+        basliklar1 = {r["title"] for r in res1.json()["results"]}
         self.assertIn("User1 Oda1", basliklar1)
         self.assertNotIn("User2 Oda1", basliklar1)
 
@@ -203,7 +203,7 @@ class MessageFlowTest(TestCase):
     def test_bos_oda_mesaj_listesi_bos(self):
         res = self.client.get(_messages_url(self.room_id))
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json(), [])
+        self.assertEqual(res.json()["results"], [])
 
     def test_mesajlar_ekleme_sirasinda_listelenir(self):
         ChatMessage.objects.create(room=self.room, role="user", content="İlk soru")
@@ -212,7 +212,7 @@ class MessageFlowTest(TestCase):
 
         res = self.client.get(_messages_url(self.room_id))
         self.assertEqual(res.status_code, 200)
-        data = res.json()
+        data = res.json()["results"]
         self.assertEqual(len(data), 3)
         self.assertEqual(data[0]["role"], "user")
         self.assertEqual(data[0]["content"], "İlk soru")

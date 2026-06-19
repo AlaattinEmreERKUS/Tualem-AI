@@ -12,6 +12,7 @@ from apps.service.graph_service import GraphService
 from apps.service.graph_rag_service import GraphRAGService
 from apps.utils.room_access import user_can_access_room
 from apps.utils.throttles import QueryThrottle, UploadThrottle, LiteratureThrottle
+from apps.utils.pagination import StandardPagination
 from apps.serializers.graph_serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
@@ -44,7 +45,9 @@ class DocumentListView(APIView):
         try:
             room_id = request.query_params.get("room_id") or None
             documents = GraphService.get_documents(request.user.id, room_id=room_id)
-            return Response(DocumentSerializer(documents, many=True).data)
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(documents, request)
+            return paginator.get_paginated_response(DocumentSerializer(page, many=True).data)
         except GraphBaseException as e:
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:

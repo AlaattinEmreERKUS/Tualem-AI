@@ -9,7 +9,7 @@ class GraphRepository:
         qs = Document.objects.filter(user_id=str(user_id))
         if room_id:
             qs = qs.filter(room_id=str(room_id))
-        return qs.values()
+        return qs.order_by('-uploaded_at').values()
 
     @staticmethod
     def get_document_by_id(document_id, user_id):
