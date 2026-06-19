@@ -35,12 +35,20 @@ class VectorStore:
     def embed_chunks_bulk(self, chunks: List[Dict[str, Any]]) -> None:
         """chunks: [{"id": str, "content": str}]"""
         from apps.models import ContentChunk
-        for chunk in chunks:
-            embedding = self.embed(chunk["content"], is_query=False)
-            ContentChunk.objects.filter(id=chunk["id"]).update(
-                embedding=embedding,
-                is_embedded=True,
-            )
+        if not chunks:
+            return
+        texts = ["passage: " + c["content"] for c in chunks]
+        embeddings = self.encoder.encode(texts)
+        objs = {str(o.id): o for o in ContentChunk.objects.filter(id__in=[c["id"] for c in chunks])}
+        to_update = []
+        for chunk, emb in zip(chunks, embeddings):
+            obj = objs.get(str(chunk["id"]))
+            if obj:
+                obj.embedding = emb.tolist()
+                obj.is_embedded = True
+                to_update.append(obj)
+        if to_update:
+            ContentChunk.objects.bulk_update(to_update, ["embedding", "is_embedded"])
 
     def search(
         self,

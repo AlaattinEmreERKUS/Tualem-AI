@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
+    'django.contrib.postgres',
     'pgvector.django',
     'apps.apps.AppsConfig',
 ]

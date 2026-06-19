@@ -94,7 +94,7 @@ class ChatRoomLifecycleTest(TestCase):
         self.assertEqual(res.json()["title"], "Makine Öğrenmesi")
 
         # 3. DB'de gerçekten var
-        self.assertTrue(ChatRoom.objects.filter(id=room_id, user_id=1).exists())
+        self.assertTrue(ChatRoom.objects.filter(id=room_id, user_id="1").exists())
 
         # 4. Listede görünüyor
         res = self.client.get(ROOMS_URL)
@@ -264,13 +264,13 @@ class ChatRepositoryTest(TestCase):
     """Repository'nin DB mantığını doğrudan test eder."""
 
     def setUp(self):
-        self.room = ChatRoom.objects.create(user_id=1, title="Repo Odası")
+        self.room = ChatRoom.objects.create(user_id="1", title="Repo Odası")
 
     def test_kullanicinin_odalari_getirilir(self):
         from chat.repositories import ChatRepository
-        ChatRoom.objects.create(user_id=2, title="Başkasının")
+        ChatRoom.objects.create(user_id="2", title="Başkasının")
         odalar = list(ChatRepository.get_rooms_by_user(user_id=1))
-        self.assertTrue(all(r.user_id == 1 for r in odalar))
+        self.assertTrue(all(r.user_id == "1" for r in odalar))
         self.assertEqual(len(odalar), 1)
 
     def test_oda_id_ile_getirilir(self):
@@ -287,7 +287,7 @@ class ChatRepositoryTest(TestCase):
         oda = ChatRepository.create_room(title="Yeni Oda", user_id=1)
         self.assertIsNotNone(oda.pk)
         self.assertEqual(oda.title, "Yeni Oda")
-        self.assertEqual(oda.user_id, 1)
+        self.assertEqual(oda.user_id, "1")
 
     def test_mesaj_olusturulur(self):
         from chat.repositories import ChatRepository
@@ -410,7 +410,7 @@ class WebSocketRoomAccessTest(TransactionTestCase):
     def setUp(self):
         self.bl = mock.patch("chat.consumers.is_blacklisted", return_value=False)
         self.bl.start()
-        self.room = ChatRoom.objects.create(user_id=1, title="WS Test Odası")
+        self.room = ChatRoom.objects.create(user_id="1", title="WS Test Odası")
 
     def tearDown(self):
         self.bl.stop()
