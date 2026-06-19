@@ -405,5 +405,9 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, room_id, role, content, sources=None):
-        room = ChatRoom.objects.get(id=room_id)
+        try:
+            room = ChatRoom.objects.get(id=room_id)
+        except ChatRoom.DoesNotExist:
+            logger.warning("[WS] save_message: room=%s deleted, skipping", room_id)
+            return None
         return ChatMessage.objects.create(room=room, role=role, content=content, sources=sources or {})

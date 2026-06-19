@@ -2,7 +2,7 @@ from django.db import models
 
 class ChatRoom(models.Model):
 
-    user_id = models.IntegerField(db_index=True, help_text="İstek atan kullanıcının ID'si")
+    user_id = models.CharField(max_length=100, db_index=True)
     title = models.CharField(max_length=255, default="Yeni Araştırma Seansı")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
