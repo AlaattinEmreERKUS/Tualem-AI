@@ -1,5 +1,6 @@
 import os
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from celery import shared_task
 
 logger = logging.getLogger('graph_module')
@@ -7,6 +8,20 @@ from apps.repositories.graph_repository import GraphRepository
 from apps.exceptions.graph_exceptions import PipelineException, EntityExtractionException
 
 PERMANENT_FAILURE_STEPS = {"text_extraction", "chunking"}
+_ENTITY_WORKERS = int(os.getenv("ENTITY_EXTRACTION_WORKERS", "4"))
+
+
+def _extract_chunk(neo4j, chunk_id: str, chunk_text: str) -> None:
+    try:
+        graph_data = neo4j.extract_graph_data(chunk_text)
+        neo4j.create_chunk_with_entities(
+            chunk_id=chunk_id,
+            entities=graph_data.get("entities", []),
+            relationships=graph_data.get("relationships", []),
+        )
+    except EntityExtractionException as e:
+        logger.warning("[pipeline] entity_extraction skip chunk=%s | %s", chunk_id, e)
+        neo4j.create_chunk_node(chunk_id)
 
 
 def _get_neo4j_client():
@@ -127,19 +142,17 @@ def run_graph_pipeline(self, document_id: str, task_id: str):
         logger.info("[pipeline] chunking ok | doc=%s | chunks=%d", document_id, len(chunks))
 
         GraphRepository.update_task_step(task_id, "entity_extraction")
-        logger.info("[pipeline] entity_extraction | doc=%s", document_id)
-        for chunk_id, chunk_text in zip(chunk_ids, chunks):
-            try:
-                graph_data = neo4j.extract_graph_data(chunk_text)
-                neo4j.create_chunk_with_entities(
-                    chunk_id=chunk_id,
-                    entities=graph_data.get("entities", []),
-                    relationships=graph_data.get("relationships", []),
-                )
-            except EntityExtractionException as e:
-                logger.warning("[pipeline] entity_extraction skip chunk=%s | %s", chunk_id, e)
-                neo4j.create_chunk_node(chunk_id)
-                continue
+        workers = min(_ENTITY_WORKERS, len(chunk_ids))
+        logger.info("[pipeline] entity_extraction | doc=%s | chunks=%d workers=%d", document_id, len(chunks), workers)
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(_extract_chunk, neo4j, cid, ctxt): cid
+                for cid, ctxt in zip(chunk_ids, chunks)
+            }
+            for future in as_completed(futures):
+                exc = future.exception()
+                if exc:
+                    logger.error("[pipeline] entity_extraction unexpected error chunk=%s | %s", futures[future], exc)
 
         GraphRepository.update_task_step(task_id, "neo4j_write")
         logger.info("[pipeline] neo4j_write ok | doc=%s", document_id)
