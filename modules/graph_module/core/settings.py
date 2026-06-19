@@ -47,6 +47,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [],
+    'DEFAULT_THROTTLE_RATES': {
+        'query': config('THROTTLE_QUERY', default='30/hour'),
+        'upload': config('THROTTLE_UPLOAD', default='20/hour'),
+        'literature': config('THROTTLE_LITERATURE', default='10/hour'),
+    },
 }
 
 MIDDLEWARE = [
@@ -166,11 +172,27 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:3000,http://localhost:3001'
 ).split(',')
 
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+_REDIS_URL = config('REDIS_URL', default='')
+
+if _REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
+
+CELERY_BROKER_URL = _REDIS_URL or 'redis://localhost:6379/0'
 
 from shared.logging_config import make_logging_config
 LOGGING = make_logging_config('graph_module', log_level=config('LOG_LEVEL', default='INFO'))
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = _REDIS_URL
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']

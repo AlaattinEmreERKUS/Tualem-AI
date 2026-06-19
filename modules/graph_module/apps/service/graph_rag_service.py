@@ -14,12 +14,12 @@ from apps.exceptions.graph_exceptions import (
 )
 
 RAG_PROMPT = PromptTemplate(
-    input_variables=["context", "question"],
+    input_variables=["context", "history", "question"],
     template="""Sen bir belge analiz asistanısın. Yalnızca verilen bağlam bilgilerini kullanarak soruyu yanıtla. Bağlamda bulunmayan bilgileri kesinlikle üretme.
 
 Bağlam:
 {context}
-
+{history}
 Soru: {question}
 
 Yanıt:""",
@@ -54,6 +54,17 @@ Belge İçeriği:
 {context}""",
     ),
 }
+
+
+def _build_history_str(history: list) -> str:
+    if not history:
+        return ""
+    lines = ["\nÖnceki Konuşma:"]
+    for msg in history:
+        role = "Kullanıcı" if msg.get("role") == "user" else "Asistan"
+        content = str(msg.get("content", ""))[:500]
+        lines.append(f"{role}: {content}")
+    return "\n".join(lines) + "\n"
 
 
 def _build_context(chunks: list, graph_triples: list) -> str:
@@ -139,7 +150,64 @@ class GraphRAGService:
         RAGRepository.delete_document_embeddings(document_id)
 
     @staticmethod
-    def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None, excluded_doc_ids: list = None) -> dict:
+    def stream_query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", room_id: str = None, excluded_doc_ids: list = None, history: list = None):
+        logger.info("[rag] stream_query | user=%s room=%s model=%s/%s", user_id, room_id, provider, model)
+        import json as _json
+        try:
+            chunks = RAGRepository.vector_search(question, user_id, top_k, room_id=room_id, excluded_doc_ids=excluded_doc_ids or [])
+        except Exception as e:
+            yield _json.dumps({"type": "error", "message": f"Vektör arama hatası: {e}"})
+            return
+
+        if not chunks:
+            yield _json.dumps({"type": "error", "message": "İlgili kaynak bulunamadı."})
+            return
+
+        chunk_ids = [str(c["id"]) for c in chunks]
+        try:
+            graph_triples = RAGRepository.get_graph_context(chunk_ids)
+        except Exception as e:
+            logger.warning("[rag] get_graph_context failed (streaming, devam) | error=%s", e)
+            graph_triples = []
+        context = _build_context(chunks, graph_triples)
+
+        try:
+            llm = _build_llm(provider, model)
+            history_str = _build_history_str(history or [])
+            prompt = RAG_PROMPT.format(context=context, history=history_str, question=question)
+            from langchain_core.messages import HumanMessage
+            for token in llm.stream([HumanMessage(content=prompt)]):
+                content = getattr(token, "content", str(token))
+                if content:
+                    yield _json.dumps({"type": "chunk", "content": content})
+        except Exception as e:
+            err = str(e)
+            if "401" in err or "api key" in err.lower():
+                yield _json.dumps({"type": "error", "message": "API anahtarı geçersiz."})
+            else:
+                logger.error("[rag] stream LLM error | model=%s | error=%s", model, err[:300])
+                yield _json.dumps({"type": "error", "message": f"LLM hatası: {err[:200]}"})
+            return
+
+        from apps.models import Document
+        doc_ids = {str(c["document_id"]) for c in chunks}
+        doc_name_map = {
+            str(d.id): d.file_name
+            for d in Document.objects.filter(id__in=doc_ids).only("id", "file_name")
+        }
+        sources = [
+            {
+                "chunk_index": c["chunk_index"],
+                "content": c["content"],
+                "document_id": str(c["document_id"]),
+                "file_name": doc_name_map.get(str(c["document_id"]), "Bilinmeyen Kaynak"),
+            }
+            for c in chunks
+        ]
+        yield _json.dumps({"type": "done", "sources": sources, "provider": provider or os.getenv("LLM_PROVIDER", "auto"), "action_type": ""})
+
+    @staticmethod
+    def query(user_id: str, question: str, top_k: int = 5, provider: str = "", model: str = "", action: str = "", room_id: str = None, excluded_doc_ids: list = None, history: list = None) -> dict:
         logger.info("[rag] query | user=%s room=%s model=%s/%s action=%s", user_id, room_id, provider, model, action or "chat")
         k = 10 if action else top_k
         try:
@@ -179,7 +247,8 @@ class GraphRAGService:
                 answer = raw
         else:
             logger.info("[rag] LLM call (chat) | provider=%s model=%s", provider, model)
-            answer = _call_llm(RAG_PROMPT, {"context": context, "question": question}, provider, model)
+            history_str = _build_history_str(history or [])
+            answer = _call_llm(RAG_PROMPT, {"context": context, "history": history_str, "question": question}, provider, model)
 
         from apps.models import Document
         doc_ids = {str(c["document_id"]) for c in chunks}

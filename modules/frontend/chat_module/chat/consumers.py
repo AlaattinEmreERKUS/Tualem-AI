@@ -125,12 +125,13 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
         if not user_message:
             return
 
+        history = await self.get_recent_history()
         await self.save_message(room_id=self.room_id, role='user', content=user_message)
         await self.channel_layer.group_send(
             self.room_group_name,
             {'type': 'chat_message', 'role': 'user', 'message': user_message}
         )
-        await self.process_rag_and_llm(user_message, model, provider, action, excluded_doc_ids)
+        await self.process_rag_and_llm(user_message, model, provider, action, excluded_doc_ids, history=history)
 
     async def handle_literature_search(self, data):
         topic = data.get('topic', '').strip()
@@ -184,75 +185,25 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    async def process_rag_and_llm(self, user_message, model="", provider="", action="", excluded_doc_ids=None):
+    @database_sync_to_async
+    def get_recent_history(self, n=6):
+        from .repositories import ChatRepository
+        messages = list(ChatRepository.get_messages_by_room(self.room_id).order_by('-created_at')[:n])
+        return [{"role": m.role, "content": m.content} for m in reversed(messages)]
+
+    async def process_rag_and_llm(self, user_message, model="", provider="", action="", excluded_doc_ids=None, history=None):
         await self.channel_layer.group_send(
             self.room_group_name,
             {'type': 'chat_message', 'role': 'system', 'message': 'Grafik veritabanında araştırma yapılıyor...'}
         )
 
+        use_streaming = not action
+
         try:
-            async with httpx.AsyncClient(timeout=600.0) as client:
-                response = await client.post(
-                    f"{GRAPH_MODULE_URL}/api/query/",
-                    json={
-                        "question": user_message,
-                        "top_k": 5,
-                        "model": model,
-                        "provider": provider,
-                        "action": action,
-                        "room_id": str(self.room_id),
-                        "excluded_doc_ids": excluded_doc_ids or [],
-                    },
-                    headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
-                )
-
-            logger.info("RAG query | status=%s | model=%s", response.status_code, model)
-
-            if response.status_code != 200:
-                try:
-                    err_body = response.json()
-                    raw_msg = err_body.get('error', str(err_body))
-                except Exception:
-                    raw_msg = f'HTTP {response.status_code}'
-                logger.warning("RAG query error | status=%s | detail=%s", response.status_code, raw_msg)
-                user_msg = _friendly_error(response.status_code, raw_msg)
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'chat_message',
-                        'role': 'assistant',
-                        'message': f'⚠️ {user_msg}',
-                        'is_streaming': False,
-                        'sources': {},
-                    }
-                )
-                return
-
-            result = response.json()
-            answer = result.get("answer", "")
-            provider = result.get("provider", "")
-            sources = result.get("sources", [])
-            action_type = result.get("action_type", "")
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'role': 'assistant',
-                    'message': answer,
-                    'is_streaming': False,
-                    'sources': {'results': sources, 'provider': provider},
-                    'action_type': action_type,
-                }
-            )
-
-            await self.save_message(
-                room_id=self.room_id,
-                role='assistant',
-                content=answer,
-                sources={'results': sources, 'provider': provider},
-            )
-
+            if use_streaming:
+                await self._process_streaming(user_message, model, provider, excluded_doc_ids, history or [])
+            else:
+                await self._process_non_streaming(user_message, model, provider, action, excluded_doc_ids, history or [])
         except httpx.TimeoutException as exc:
             logger.error("Graph module timeout: %s", exc)
             await self.channel_layer.group_send(
@@ -260,7 +211,7 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'chat_message',
                     'role': 'assistant',
-                    'message': '⚠️ İstek zaman aşımına uğradı (120s). Model yavaş yanıt veriyor olabilir.',
+                    'message': '⚠️ İstek zaman aşımına uğradı (600s). Model yavaş yanıt veriyor olabilir.',
                     'is_streaming': False,
                     'sources': {},
                 }
@@ -277,6 +228,166 @@ class ResearchChatConsumer(AsyncWebsocketConsumer):
                     'sources': {},
                 }
             )
+
+    async def _process_streaming(self, user_message, model, provider, excluded_doc_ids, history):
+        full_content = ""
+        sources = []
+        final_provider = provider
+
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            async with client.stream(
+                "POST",
+                f"{GRAPH_MODULE_URL}/api/query/",
+                json={
+                    "question": user_message,
+                    "top_k": 5,
+                    "model": model,
+                    "provider": provider,
+                    "room_id": str(self.room_id),
+                    "excluded_doc_ids": excluded_doc_ids or [],
+                    "stream": True,
+                    "history": history,
+                },
+                headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
+            ) as response:
+                if response.status_code != 200:
+                    await response.aread()
+                    try:
+                        raw_msg = response.json().get('error', f'HTTP {response.status_code}')
+                    except Exception:
+                        raw_msg = f'HTTP {response.status_code}'
+                    logger.warning("RAG stream error | status=%s | detail=%s", response.status_code, raw_msg)
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'chat_message',
+                            'role': 'assistant',
+                            'message': f'⚠️ {_friendly_error(response.status_code, raw_msg)}',
+                            'is_streaming': False,
+                            'sources': {},
+                        }
+                    )
+                    return
+
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except Exception:
+                        continue
+
+                    if event.get("type") == "chunk":
+                        content = event.get("content", "")
+                        full_content += content
+                        await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                'type': 'chat_message',
+                                'role': 'assistant',
+                                'message': content,
+                                'is_streaming': True,
+                                'sources': {},
+                            }
+                        )
+                    elif event.get("type") == "done":
+                        sources = event.get("sources", [])
+                        final_provider = event.get("provider", provider)
+                        await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                'type': 'chat_message',
+                                'role': 'assistant',
+                                'message': '',
+                                'is_streaming': False,
+                                'sources': {'results': sources, 'provider': final_provider},
+                                'action_type': '',
+                            }
+                        )
+                    elif event.get("type") == "error":
+                        msg = event.get("message", "Bilinmeyen hata.")
+                        logger.warning("RAG stream error event | %s", msg)
+                        await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                'type': 'chat_message',
+                                'role': 'assistant',
+                                'message': f'⚠️ {msg}',
+                                'is_streaming': False,
+                                'sources': {},
+                            }
+                        )
+                        return
+
+        if full_content:
+            await self.save_message(
+                room_id=self.room_id,
+                role='assistant',
+                content=full_content,
+                sources={'results': sources, 'provider': final_provider},
+            )
+
+    async def _process_non_streaming(self, user_message, model, provider, action, excluded_doc_ids, history):
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            response = await client.post(
+                f"{GRAPH_MODULE_URL}/api/query/",
+                json={
+                    "question": user_message,
+                    "top_k": 5,
+                    "model": model,
+                    "provider": provider,
+                    "action": action,
+                    "room_id": str(self.room_id),
+                    "excluded_doc_ids": excluded_doc_ids or [],
+                    "history": history,
+                },
+                headers={**_GRAPH_HEADERS_BASE, "Authorization": f"Bearer {self.token}"},
+            )
+
+        logger.info("RAG query | status=%s | model=%s action=%s", response.status_code, model, action)
+
+        if response.status_code != 200:
+            try:
+                raw_msg = response.json().get('error', str(response.status_code))
+            except Exception:
+                raw_msg = f'HTTP {response.status_code}'
+            logger.warning("RAG query error | status=%s | detail=%s", response.status_code, raw_msg)
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'role': 'assistant',
+                    'message': f'⚠️ {_friendly_error(response.status_code, raw_msg)}',
+                    'is_streaming': False,
+                    'sources': {},
+                }
+            )
+            return
+
+        result = response.json()
+        answer = result.get("answer", "")
+        resp_provider = result.get("provider", "")
+        sources = result.get("sources", [])
+        action_type = result.get("action_type", "")
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'role': 'assistant',
+                'message': answer,
+                'is_streaming': False,
+                'sources': {'results': sources, 'provider': resp_provider},
+                'action_type': action_type,
+            }
+        )
+        await self.save_message(
+            room_id=self.room_id,
+            role='assistant',
+            content=answer,
+            sources={'results': sources, 'provider': resp_provider},
+        )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({

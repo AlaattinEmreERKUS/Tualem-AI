@@ -46,9 +46,9 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('POSTGRES_DB', 'tualem_db'),
-            'USER': os.getenv('POSTGRES_USER', 'tualem_emre'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'tualem_1234'),
+            'NAME': os.environ['POSTGRES_DB'],
+            'USER': os.environ['POSTGRES_USER'],
+            'PASSWORD': os.environ['POSTGRES_PASSWORD'],
             'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
             'PORT': os.getenv('POSTGRES_PORT', '5432'),
         }

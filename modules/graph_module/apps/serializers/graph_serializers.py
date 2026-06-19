@@ -62,6 +62,13 @@ class QueryRequestSerializer(serializers.Serializer):
     model = serializers.CharField(required=False, allow_blank=True, default="", max_length=100)
     action = serializers.ChoiceField(choices=["", "ozet", "test", "yolharitasi"], required=False, allow_blank=True, default="")
     room_id = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+    stream = serializers.BooleanField(required=False, default=False)
+    history = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField()),
+        required=False,
+        default=list,
+        max_length=20,
+    )
     excluded_doc_ids = serializers.ListField(
         child=serializers.CharField(), required=False, default=list
     )

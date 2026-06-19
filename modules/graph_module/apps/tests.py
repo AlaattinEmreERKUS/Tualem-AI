@@ -60,8 +60,9 @@ def _pdf_file(name="test.pdf"):
 # Her testte tekrarlanan patch'leri merkezi tutuyoruz
 _ALWAYS_MOCK = [
     mock.patch("apps.utils.authentication.is_blacklisted", return_value=False),
-    mock.patch("apps.tasks.run_graph_pipeline.delay"),  # Celery tetiklenmez
+    mock.patch("apps.tasks.run_graph_pipeline.delay"),
     mock.patch("apps.views.user_can_access_room", return_value=True),
+    mock.patch("apps.utils.throttles._JWTUserRateThrottle.allow_request", return_value=True),
 ]
 
 
@@ -303,6 +304,11 @@ class QueryScenarioTest(TestCase):
     def setUp(self):
         self.client = _authed_client(user_id=1)
         self.rag_result = {"answer": "LLM cevabı", "action_type": "", "provider": "groq", "sources": []}
+        self._throttle_mock = mock.patch("apps.utils.throttles._JWTUserRateThrottle.allow_request", return_value=True)
+        self._throttle_mock.start()
+
+    def tearDown(self):
+        self._throttle_mock.stop()
 
     def test_soru_eksikse_400(self):
         with mock.patch("apps.utils.authentication.is_blacklisted", return_value=False):
@@ -352,9 +358,12 @@ class LiteratureSearchTest(TestCase):
         self.client = _authed_client(user_id=1)
         self.bl_patch = mock.patch("apps.utils.authentication.is_blacklisted", return_value=False)
         self.bl_patch.start()
+        self._throttle_mock = mock.patch("apps.utils.throttles._JWTUserRateThrottle.allow_request", return_value=True)
+        self._throttle_mock.start()
 
     def tearDown(self):
         self.bl_patch.stop()
+        self._throttle_mock.stop()
 
     def test_konu_eksikse_400(self):
         res = self.client.post("/api/documents/search/", {"max_results": 5}, format="json")
@@ -427,7 +436,10 @@ class QueryRoomAccessTest(TestCase):
 
     def setUp(self):
         self.client = _authed_client(user_id=1)
-        self.patches = [mock.patch("apps.utils.authentication.is_blacklisted", return_value=False)]
+        self.patches = [
+            mock.patch("apps.utils.authentication.is_blacklisted", return_value=False),
+            mock.patch("apps.utils.throttles._JWTUserRateThrottle.allow_request", return_value=True),
+        ]
         _start_patches(self.patches)
         self.rag_result = {"answer": "Cevap", "action_type": "", "provider": "groq", "sources": []}
 
@@ -469,6 +481,7 @@ class UploadRoomAccessTest(TestCase):
         self.patches = [
             mock.patch("apps.utils.authentication.is_blacklisted", return_value=False),
             mock.patch("apps.tasks.run_graph_pipeline.delay"),
+            mock.patch("apps.utils.throttles._JWTUserRateThrottle.allow_request", return_value=True),
         ]
         _start_patches(self.patches)
 

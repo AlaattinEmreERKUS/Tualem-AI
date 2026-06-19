@@ -1,13 +1,17 @@
+import json
 import logging
+from django.http import StreamingHttpResponse
 from rest_framework.views import APIView
 
 logger = logging.getLogger('graph_module')
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework.throttling import UserRateThrottle
 from apps.service.graph_service import GraphService
 from apps.service.graph_rag_service import GraphRAGService
 from apps.utils.room_access import user_can_access_room
+from apps.utils.throttles import QueryThrottle, UploadThrottle, LiteratureThrottle
 from apps.serializers.graph_serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
@@ -29,6 +33,12 @@ from apps.exceptions.graph_exceptions import (
 
 
 class DocumentListView(APIView):
+    throttle_classes_by_method = {'post': [UploadThrottle]}
+
+    def get_throttles(self):
+        if self.request.method == 'POST':
+            return [UploadThrottle()]
+        return []
 
     def get(self, request):
         try:
@@ -119,6 +129,7 @@ class DocumentChunkListView(APIView):
 
 
 class LiteratureSearchView(APIView):
+    throttle_classes = [LiteratureThrottle]
 
     def post(self, request):
         serializer = LiteratureSearchRequestSerializer(data=request.data)
@@ -144,6 +155,7 @@ class LiteratureSearchView(APIView):
 
 
 class QueryView(APIView):
+    throttle_classes = [QueryThrottle]
 
     def post(self, request):
         serializer = QueryRequestSerializer(data=request.data)
@@ -154,6 +166,22 @@ class QueryView(APIView):
         room_id = data.get("room_id") or None
         if room_id and not user_can_access_room(request.user.id, room_id, request.auth):
             return Response({"error": "Bu odaya erişim yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
+
+        if data.get("stream") and not data.get("action"):
+            def _stream_gen():
+                for line in GraphRAGService.stream_query(
+                    user_id=str(request.user.id),
+                    question=data["question"],
+                    top_k=data["top_k"],
+                    provider=data.get("provider", ""),
+                    model=data.get("model", ""),
+                    room_id=room_id,
+                    excluded_doc_ids=data.get("excluded_doc_ids") or [],
+                    history=data.get("history") or [],
+                ):
+                    yield line + "\n"
+            return StreamingHttpResponse(_stream_gen(), content_type="application/x-ndjson")
+
         try:
             result = GraphRAGService.query(
                 user_id=str(request.user.id),
@@ -164,6 +192,7 @@ class QueryView(APIView):
                 action=data.get("action", ""),
                 room_id=room_id,
                 excluded_doc_ids=data.get("excluded_doc_ids") or [],
+                history=data.get("history") or [],
             )
             return Response(QueryResponseSerializer(result).data)
         except NoRelevantChunksException as e:
