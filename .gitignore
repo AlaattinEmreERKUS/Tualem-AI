@@ -178,3 +178,5 @@ cython_debug/
 nginx/logs/
 
 # End of https://www.toptal.com/developers/gitignore/api/django
+# Local SQLite databases
+*.sqlite3
